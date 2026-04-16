@@ -75,19 +75,17 @@ class PartialLinearModelUniformNoiseDGP(DataGeneratingProcess):
         y = self.beta * t + mu_x + eps
 
         return SampledData(
-            x=x,
-            t=t,
-            y=y,
-            pi_x=pi_x if oracle else None,
-            mu_x=mu_x if oracle else None,
-            metadata={
-                "oracle": oracle,
-                "beta": self.beta,
-                "d": self.d,
-                "sigma_u": self.sigma_u,
-                "sigma_eps": self.sigma_eps,
-                "seed": seed,
+            observed={
+                "x": x,
+                "t": t,
+                "y": y,
             },
+            oracle={
+                "pi_x": pi_x,
+                "mu_x": mu_x,
+            }
+            if oracle
+            else {},
         )
 
     def true_parameter(self) -> float:

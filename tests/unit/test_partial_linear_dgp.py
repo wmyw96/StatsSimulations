@@ -30,12 +30,10 @@ class PartialLinearModelUniformNoiseDGPTests(unittest.TestCase):
 
         sample = dgp.sample(n=25, seed=123, oracle=False)
 
-        self.assertEqual(sample.x.shape, (25, 2))
-        self.assertEqual(sample.t.shape, (25, 1))
-        self.assertEqual(sample.y.shape, (25, 1))
-        self.assertIsNone(sample.pi_x)
-        self.assertIsNone(sample.mu_x)
-        self.assertFalse(sample.metadata["oracle"])
+        self.assertEqual(sample.observed["x"].shape, (25, 2))
+        self.assertEqual(sample.observed["t"].shape, (25, 1))
+        self.assertEqual(sample.observed["y"].shape, (25, 1))
+        self.assertEqual(sample.oracle, {})
 
     def test_sample_includes_oracle_outputs(self) -> None:
         dgp = PartialLinearModelUniformNoiseDGP(
@@ -49,11 +47,13 @@ class PartialLinearModelUniformNoiseDGPTests(unittest.TestCase):
 
         sample = dgp.sample(n=10, seed=7, oracle=True)
 
-        self.assertEqual(sample.pi_x.shape, (10, 1))
-        self.assertEqual(sample.mu_x.shape, (10, 1))
-        np.testing.assert_allclose(sample.t, sample.pi_x)
-        np.testing.assert_allclose(sample.y, dgp.beta * sample.t + sample.mu_x)
-        self.assertTrue(sample.metadata["oracle"])
+        self.assertEqual(sample.oracle["pi_x"].shape, (10, 1))
+        self.assertEqual(sample.oracle["mu_x"].shape, (10, 1))
+        np.testing.assert_allclose(sample.observed["t"], sample.oracle["pi_x"])
+        np.testing.assert_allclose(
+            sample.observed["y"],
+            dgp.beta * sample.observed["t"] + sample.oracle["mu_x"],
+        )
 
     def test_sampling_is_reproducible_for_fixed_seed(self) -> None:
         dgp = PartialLinearModelUniformNoiseDGP(
@@ -68,11 +68,26 @@ class PartialLinearModelUniformNoiseDGPTests(unittest.TestCase):
         sample_one = dgp.sample(n=12, seed=999, oracle=True)
         sample_two = dgp.sample(n=12, seed=999, oracle=True)
 
-        np.testing.assert_allclose(sample_one.x, sample_two.x)
-        np.testing.assert_allclose(sample_one.t, sample_two.t)
-        np.testing.assert_allclose(sample_one.y, sample_two.y)
-        np.testing.assert_allclose(sample_one.pi_x, sample_two.pi_x)
-        np.testing.assert_allclose(sample_one.mu_x, sample_two.mu_x)
+        np.testing.assert_allclose(
+            sample_one.observed["x"],
+            sample_two.observed["x"],
+        )
+        np.testing.assert_allclose(
+            sample_one.observed["t"],
+            sample_two.observed["t"],
+        )
+        np.testing.assert_allclose(
+            sample_one.observed["y"],
+            sample_two.observed["y"],
+        )
+        np.testing.assert_allclose(
+            sample_one.oracle["pi_x"],
+            sample_two.oracle["pi_x"],
+        )
+        np.testing.assert_allclose(
+            sample_one.oracle["mu_x"],
+            sample_two.oracle["mu_x"],
+        )
 
     def test_true_parameter_returns_beta(self) -> None:
         dgp = PartialLinearModelUniformNoiseDGP(

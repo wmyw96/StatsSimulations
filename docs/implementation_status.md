@@ -51,8 +51,8 @@ The following runtime records are implemented:
 
 Purpose:
 
-- store one sampled dataset from a DGP,
-- currently includes `X`, `T`, `Y`, and `metadata`.
+- store one sampled dataset from a DGP in a model-agnostic way,
+- currently includes an `observed` dictionary and an optional `oracle` dictionary.
 
 #### `EstimateResult`
 
@@ -143,7 +143,7 @@ Current behavior:
 - applies uniform treatment noise with scale `sigma_u`,
 - applies callable `func_mu(x)` to build the outcome regression,
 - applies uniform outcome noise with scale `sigma_eps`,
-- returns `SampledData` with optional oracle fields `pi_x` and `mu_x`.
+- returns `SampledData` with observed arrays `x`, `t`, `y` and optional oracle arrays `pi_x`, `mu_x`.
 
 ### Randomness helpers
 

@@ -13,29 +13,10 @@ else:
 
 @dataclass
 class SampledData:
-    """A single sampled dataset produced by a data-generating process."""
+    """A generic sampled dataset with observed and optional oracle arrays."""
 
-    x: np.ndarray
-    t: np.ndarray
-    y: np.ndarray
-    pi_x: np.ndarray | None = None
-    mu_x: np.ndarray | None = None
-    metadata: dict[str, Any] = field(default_factory=dict)
-
-    @property
-    def X(self) -> np.ndarray:
-        """Compatibility alias for x."""
-        return self.x
-
-    @property
-    def T(self) -> np.ndarray:
-        """Compatibility alias for t."""
-        return self.t
-
-    @property
-    def Y(self) -> np.ndarray:
-        """Compatibility alias for y."""
-        return self.y
+    observed: dict[str, np.ndarray]
+    oracle: dict[str, np.ndarray] = field(default_factory=dict)
 
 
 @dataclass

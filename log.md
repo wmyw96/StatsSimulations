@@ -30,3 +30,9 @@
 - Created a project-local conda environment at `.conda/simlab`.
 - Installed NumPy in that environment and used it to run the new DGP unit test successfully.
 - Updated the implementation status document with the validated test command and environment location.
+
+## 2026-04-15 21:57:30 EDT
+
+- Refactored `SampledData` into a generic container with `observed` and `oracle` dictionaries.
+- Removed `metadata` from sampled data so estimators cannot accidentally access truth-related information through the sample object.
+- Updated the partial linear DGP and its unit test to use the generic sampled-data interface.
