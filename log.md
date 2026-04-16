@@ -44,3 +44,7 @@
 - Added estimator unit tests covering the oracle formula, neural fit/predict behavior, and the odd-sample D1/D2 split rule.
 - Installed PyTorch in the project-local conda environment and documented the new estimator implementation in `docs/implementation_status.md`.
 - Removed the old PLM estimator placeholder files so the package now has a single PLM estimator module.
+
+## 2026-04-15 23:10:21 EDT
+
+- Updated the local git `origin` remote to `git@github.com:wmyw96/StatsSimulations.git`.
