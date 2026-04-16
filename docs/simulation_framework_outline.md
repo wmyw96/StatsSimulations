@@ -47,7 +47,7 @@ Simulation settings should be declarative. A study should be representable as a 
 
 ### 5. Make outputs analysis-friendly
 
-The evaluator should save results in a tidy tabular format so downstream analysis is easy in pandas, polars, or R.
+The evaluator should save results in a simple structured format that works naturally with NumPy arrays and standard-library serialization. We should avoid making the framework depend on pandas.
 
 ### 6. Support extension beyond one model
 
@@ -107,7 +107,8 @@ Current implementation note:
 
 - the package hierarchy has now been scaffolded under `src/simlab`,
 - runtime records such as `SampledData`, `EstimateResult`, and `TrialRecord` are dataclasses,
-- DGP `params` and estimator `hyper_parameters` are plain dictionaries.
+- DGP `params` and estimator `hyper_parameters` are plain dictionaries,
+- the base numerical stack should be NumPy-first, without pandas.
 
 ## Core Abstractions
 
@@ -479,8 +480,8 @@ For each experiment cell and trial:
 
 Save:
 
-- raw records as CSV or parquet,
-- aggregate summaries as CSV or parquet,
+- raw records as CSV, JSON, or NumPy-native formats,
+- aggregate summaries as CSV or JSON,
 - experiment metadata as JSON.
 
 Recommended initial output layout:
@@ -488,12 +489,12 @@ Recommended initial output layout:
 ```text
 outputs/
   plm_study/
-    raw_results.parquet
-    summary_results.parquet
+    raw_results.csv
+    summary_results.csv
     metadata.json
 ```
 
-Parquet is preferable once dependencies are in place because diagnostics columns and repeated runs become easier to manage.
+For a NumPy-first codebase, CSV plus JSON is the simplest default. If we later want a denser array-oriented save format, we can add `npz` support without introducing pandas.
 
 ## Suggested Result Schema
 
@@ -672,16 +673,15 @@ If that path is stable, we can add DML and the proposed estimator with much lowe
 
 These do not block the outline, but we should settle them when we start implementation:
 
-1. What numeric stack do we want for the base package: numpy only, or numpy plus pandas from the start?
-2. What deep-learning backend do we want for neural DML?
-3. Do we want the evaluator to run serially first, or include parallel trial execution from the beginning?
-4. What shape convention do we want for one-dimensional outputs?
+1. What deep-learning backend do we want for neural DML?
+2. Do we want the evaluator to run serially first, or include parallel trial execution from the beginning?
+3. What shape convention do we want for one-dimensional outputs?
 
 My recommendation is:
 
 - plain dictionaries for `params` and `hyper_parameters`,
 - dataclasses for `SampledData`, `EstimateResult`, and `TrialRecord`,
-- numpy plus pandas initially,
+- NumPy as the base numerical dependency and no pandas in the framework layer,
 - PyTorch only inside the neural estimator module,
 - serial evaluator first,
 - vector convention `(n,)` unless a backend strongly prefers `(n, 1)`.
