@@ -110,3 +110,10 @@
 - Reorganized local visualization outputs into family folders under `examples/plm/figs/`, including `examples/plm/figs/1.1/` and `examples/plm/figs/1.2/`.
 - Updated `examples/plm/vis_result.py` so new figures are saved into `figs/<experiment-family>/` instead of directly into `figs/`.
 - Reran the corrected `beta = 0.5` setting as Experiment `1.2.2`, generated the full figure set in `examples/plm/figs/1.2/`, and updated `examples/plm/exp_log.md` so `1.2.1` is archived as the pre-fix run and `1.2.2` is the corrected reference run.
+
+## 2026-04-19 20:05:00 EDT
+
+- Added experiment family `1.3` with trial-level random coefficients `beta ~ Unif[-0.5, 0.5]`, while keeping the sine-sine PLM and the existing DML/oracle method settings.
+- Extended the PLM evaluator to store the realized `beta_true` for each trial so randomized-coefficient experiments can be summarized cleanly.
+- Updated `examples/plm/vis_result.py` with the requested custom color bank and a dedicated unified `log_2(n)` versus `log_2(MSE)` plot for the `1.3` family.
+- Ran Experiment `1.3.1` with `30` trials per sample size, saved the results to `simulation_results/plm/1.3_1.json`, generated `examples/plm/figs/1.3/1.3.1_unified_mse_scaling.png`, and documented the outcome in `examples/plm/exp_log.md`.

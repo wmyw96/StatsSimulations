@@ -47,8 +47,14 @@ def plm_uniform_noise_dgp_generator(param_config: dict, seed: int | None = None)
     del seed  # Reserved for future generators that may use NumPy randomness.
     func_mu = FUNCTION_REGISTRY[param_config["func_mu_name"]]
     func_pi = FUNCTION_REGISTRY[param_config["func_pi_name"]]
+    if "beta" in param_config:
+        beta = float(param_config["beta"])
+    elif param_config.get("beta_sampler_name") == "uniform":
+        beta = float(np.random.uniform(float(param_config["beta_low"]), float(param_config["beta_high"])))
+    else:
+        raise KeyError("PLM DGP config must provide either 'beta' or a supported beta sampler.")
     return PartialLinearModelUniformNoiseDGP(
-        beta=float(param_config["beta"]),
+        beta=beta,
         func_mu=func_mu,
         func_pi=func_pi,
         d=int(param_config["d"]),
@@ -123,6 +129,73 @@ def build_experiment_1_2(
     )
 
 
+def build_experiment_1_3(
+    exp_id: str,
+    n_trials: int,
+    seed_offset: int = 0,
+    device: str = "cpu",
+    result_root: str | Path = DEFAULT_RESULT_ROOT,
+) -> PLMEvaluator:
+    """Build evaluator configuration for experiment family 1.3."""
+    dgp_param_grid = {
+        "d": 1,
+        "func_mu_name": "sin_2pi_first_coordinate",
+        "func_pi_name": "sin_2pi_first_coordinate",
+        "beta_sampler_name": "uniform",
+        "beta_low": -0.5,
+        "beta_high": 0.5,
+        "sigma_u": 0.5,
+        "sigma_eps": 0.5,
+        "n_test": 10000,
+        "n": [256, 512, 1024, 2048],
+    }
+
+    dml_method_config = {
+        "L": 3,
+        "N": 512,
+        "lambda_mu": 1e-4,
+        "lambda_pi": 1e-4,
+        "niter": 200,
+        "lr": 1e-3,
+        "batch_size": 1024,
+        "device": device,
+        "seed": seed_offset,
+        "d": 1,
+    }
+    oracle_method_config = {
+        "func_mu_name": "sin_2pi_first_coordinate",
+        "func_pi_name": "sin_2pi_first_coordinate",
+    }
+
+    estimators = [
+        {
+            "name": "dml_nn",
+            "is_oracle": False,
+            "factory_name": "make_plm_dml_estimator",
+            "method_config": deepcopy(dml_method_config),
+            "factory": lambda cfg=deepcopy(dml_method_config): make_plm_dml_estimator(cfg),
+        },
+        {
+            "name": "oracle_aipw",
+            "is_oracle": True,
+            "factory_name": "make_plm_oracle_estimator",
+            "method_config": deepcopy(oracle_method_config),
+            "factory": lambda cfg=deepcopy(oracle_method_config): make_plm_oracle_estimator(cfg),
+        },
+    ]
+
+    return PLMEvaluator(
+        exp_name=EXPERIMENT_NAME,
+        exp_id=exp_id,
+        dgp_generator=plm_uniform_noise_dgp_generator,
+        dgp_param_grid=dgp_param_grid,
+        estimators=estimators,
+        n_trials=n_trials,
+        seed_offset=seed_offset,
+        result_root=result_root,
+    )
+
+
 def build_plm_sine_experiment(
     exp_id: str,
     beta: float,
@@ -192,6 +265,7 @@ def build_plm_sine_experiment(
 EXPERIMENT_FAMILY_BUILDERS = {
     "1.1": build_experiment_1_1,
     "1.2": build_experiment_1_2,
+    "1.3": build_experiment_1_3,
 }
 
 

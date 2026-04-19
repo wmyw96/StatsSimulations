@@ -178,6 +178,7 @@ class PLMEvaluator(Evaluator):
         return {
             "dgp_name": dgp.name,
             "dgp_config": deepcopy(dgp_config),
+            "beta_true": beta_true,
             "trial_id": trial_id,
             "trial_seed": trial_seed,
             "train_seed": train_seed,

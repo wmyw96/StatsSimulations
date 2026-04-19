@@ -9,12 +9,24 @@ import sys
 from collections import defaultdict
 from pathlib import Path
 
+import numpy as np
+
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SRC_ROOT = REPO_ROOT / "src"
 if str(SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(SRC_ROOT))
 
 from experiment_defs import build_evaluator_from_exp_id, normalize_exp_id
+
+COLOR_BANK = {
+    "myred": "#ae1908",
+    "myblue": "#05348b",
+    "myorange": "#ec813b",
+    "mylightblue": "#9acdc4",
+    "mypurple": "#743096",
+    "myyellow": "#e5a84b",
+    "mygreen": "#6bb392",
+}
 
 
 def parse_args() -> argparse.Namespace:
@@ -77,6 +89,15 @@ def main() -> None:
         )
         for n in n_values
     }
+
+    if family_display_id == "1.3":
+        _plot_family_13_unified(
+            display_exp_id=display_exp_id,
+            fig_dir=fig_dir,
+            n_values=n_values,
+            summaries=summaries,
+        )
+        return
 
     method_names = sorted(
         {
@@ -192,6 +213,58 @@ def main() -> None:
         plt.savefig(per_n_scatter_path, dpi=200)
         plt.close()
         print(f"Saved {per_n_scatter_path}")
+
+
+def _plot_family_13_unified(
+    display_exp_id: str,
+    fig_dir: Path,
+    n_values: list[int],
+    summaries: dict[int, dict[str, dict[str, float | int]]],
+) -> None:
+    import matplotlib.pyplot as plt
+
+    line_specs = [
+        ("oracle_aipw", "beta_hat_mse", "Oracle AIPW", COLOR_BANK["myred"], "-"),
+        ("dml_nn", "beta_hat_mse", "DML AIPW", COLOR_BANK["myorange"], "-"),
+        ("dml_nn", "beta_init_mse", "NN joint LSE beta", COLOR_BANK["mygreen"], "-"),
+        ("dml_nn", "mu_mse", "DML mu", COLOR_BANK["myblue"], "--"),
+        ("dml_nn", "pi_mse", "DML pi", COLOR_BANK["mylightblue"], "--"),
+    ]
+
+    plt.figure(figsize=(7, 4.5))
+    x_values = np.log2(np.asarray(n_values, dtype=float))
+    for method_name, metric_key, label, color, linestyle in line_specs:
+        y_values = []
+        valid_x_values = []
+        for n in n_values:
+            summary = summaries[n]
+            if method_name not in summary:
+                continue
+            metric_value = float(summary[method_name][metric_key])
+            if metric_value <= 0.0:
+                continue
+            valid_x_values.append(np.log2(float(n)))
+            y_values.append(np.log2(metric_value))
+        if valid_x_values:
+            plt.plot(
+                valid_x_values,
+                y_values,
+                color=color,
+                linestyle=linestyle,
+                linewidth=2.3,
+                label=label,
+            )
+
+    plt.xlabel(r"$\log_2(n)$")
+    plt.ylabel(r"$\log_2(\mathrm{MSE})$")
+    plt.title(f"{display_exp_id}: beta and nuisance scaling")
+    plt.xticks(x_values, [str(int(x)) for x in x_values])
+    plt.legend()
+    plt.tight_layout()
+    output_path = fig_dir / f"{display_exp_id}_unified_mse_scaling.png"
+    plt.savefig(output_path, dpi=220)
+    plt.close()
+    print(f"Saved {output_path}")
 
 
 if __name__ == "__main__":

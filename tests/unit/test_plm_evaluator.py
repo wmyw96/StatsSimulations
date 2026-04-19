@@ -14,6 +14,7 @@ class PLMEvaluatorTests(unittest.TestCase):
         self.assertEqual(normalize_exp_id("1.1.2"), ("1.1_2", "1.1.2"))
         self.assertEqual(normalize_exp_id("1.1_2"), ("1.1_2", "1.1.2"))
         self.assertEqual(normalize_exp_id("1.2.1"), ("1.2_1", "1.2.1"))
+        self.assertEqual(normalize_exp_id("1.3.1"), ("1.3_1", "1.3.1"))
 
         evaluator = build_evaluator_from_exp_id(
             exp_id="1.1.2",
@@ -33,6 +34,18 @@ class PLMEvaluatorTests(unittest.TestCase):
         self.assertEqual(evaluator_12.exp_id, "1.2_1")
         self.assertEqual(evaluator_12.result_path.name, "1.2_1.json")
         self.assertEqual(evaluator_12.dgp_param_grid["beta"], 0.5)
+
+        evaluator_13 = build_evaluator_from_exp_id(
+            exp_id="1.3.1",
+            n_trials=1,
+            seed_offset=0,
+            device="cpu",
+        )
+        self.assertEqual(evaluator_13.exp_id, "1.3_1")
+        self.assertEqual(evaluator_13.result_path.name, "1.3_1.json")
+        self.assertEqual(evaluator_13.dgp_param_grid["beta_sampler_name"], "uniform")
+        self.assertEqual(evaluator_13.dgp_param_grid["beta_low"], -0.5)
+        self.assertEqual(evaluator_13.dgp_param_grid["beta_high"], 0.5)
 
     def test_run_and_resume_without_duplicate_trials(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -84,6 +97,34 @@ class PLMEvaluatorTests(unittest.TestCase):
             self.assertIn("mu_pi_product_mean", first_trial)
             self.assertIn("mu_pi_product_true_mean", first_trial)
             self.assertIn("mu_pi_product_mse", first_trial)
+
+    def test_random_beta_family_records_realized_beta(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            result_root = Path(temp_dir) / "simulation_results"
+            evaluator = build_evaluator_from_exp_id(
+                exp_id="1.3.1",
+                n_trials=1,
+                seed_offset=3,
+                device="cpu",
+                result_root=result_root,
+            )
+            evaluator.dgp_param_grid["n"] = [16]
+            evaluator.dgp_param_grid["n_test"] = 32
+            evaluator.estimators[0]["method_config"]["N"] = 8
+            evaluator.estimators[0]["method_config"]["niter"] = 2
+            evaluator.estimators[0]["method_config"]["batch_size"] = 8
+            evaluator.estimators[0]["method_config"]["d"] = 1
+            evaluator.estimators[0]["factory"] = lambda cfg=dict(evaluator.estimators[0]["method_config"]): __import__(
+                "examples.plm.experiment_defs",
+                fromlist=["make_plm_dml_estimator"],
+            ).make_plm_dml_estimator(cfg)
+
+            results = evaluator.run()
+            trial_record = results["trial_results"][0]
+
+            self.assertIn("beta_true", trial_record)
+            self.assertGreaterEqual(trial_record["beta_true"], -0.5)
+            self.assertLessEqual(trial_record["beta_true"], 0.5)
 
 
 if __name__ == "__main__":

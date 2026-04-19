@@ -378,3 +378,74 @@ Generated figures:
 - `examples/plm/figs/1.2/1.2.2_n512_mu_pi_product_mean_vs_beta_hat_scatter.png`
 - `examples/plm/figs/1.2/1.2.2_n1024_mu_pi_product_mean_vs_beta_hat_scatter.png`
 - `examples/plm/figs/1.2/1.2.2_n2048_mu_pi_product_mean_vs_beta_hat_scatter.png`
+
+## 1.3.1
+
+Experiment `1.3.1`, stored in the simulation artifact `1.3_1`.
+
+### Goal
+
+This experiment keeps the same one-dimensional sine-sine partial linear model as the `1.1` and `1.2` families, but now randomizes the ground-truth coefficient across trials. The goal is to study how the average error scales with the sample size when each trial draws
+
+```text
+beta ~ Unif[-0.5, 0.5],
+```
+
+and to summarize the scaling behavior of the main beta and nuisance quantities in a single unified plot.
+
+### Setting and design
+
+Specific data-generating setting:
+
+- DGP class: `PartialLinearModelUniformNoiseDGP`
+- Covariate dimension: `d = 1`
+- Outcome regression: `mu(x) = sin(2 pi x)`
+- Treatment regression: `pi(x) = sin(2 pi x)`
+- Trial-level target coefficient: `beta ~ Unif[-0.5, 0.5]`
+- Treatment noise scale: `sigma_u = 0.5`
+- Outcome noise scale: `sigma_eps = 0.5`
+- Training sample sizes: `n in {256, 512, 1024, 2048}`
+- Test sample size: `n_test = 10000`
+- Number of trials per sample size: `30`
+
+Method design:
+
+- Compared methods: Neural DML and Oracle AIPW
+- Neural network depth: `L = 3`
+- Neural network width: `N = 512`
+- Outcome-network regularization: `lambda_mu = 1e-4`
+- Treatment-network regularization: `lambda_pi = 1e-4`
+- Optimizer: Adam with profiled closed-form updates for the joint least-squares beta on `D2`
+- Learning rate: `lr = 1e-3`
+- Mini-batch size: `batch_size = 1024`
+- Training epochs: `niter = 200`
+- Device: CPU by default unless explicitly changed in the simulation configuration
+
+Design note:
+
+- The evaluator seeds each trial by its trial index. As a result, for a fixed trial id the same realized `beta` value is reused across the different sample sizes. This keeps the cross-`n` comparison aligned at the trial level while still averaging over a broad range of coefficient values across the 30 trials.
+
+### Results
+
+The experiment was run with `30` independent trials for each sample size in `{256, 512, 1024, 2048}`. Across the 30 seeded trials, the realized coefficients ranged from approximately `-0.4896` to `0.4670`, with an average close to zero (`0.000863`).
+
+Average mean squared errors:
+
+| n | Oracle AIPW Beta MSE | DML AIPW Beta MSE | Joint LSE Beta MSE | DML Mu MSE | DML Pi MSE |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| 256 | 0.004472 | 0.156432 | 0.024272 | 0.039191 | 0.027801 |
+| 512 | 0.004564 | 0.013441 | 0.023545 | 0.029614 | 0.016700 |
+| 1024 | 0.002332 | 0.006339 | 0.007433 | 0.014810 | 0.008994 |
+| 2048 | 0.000933 | 0.003363 | 0.002195 | 0.007766 | 0.005506 |
+
+Main observations:
+
+- The unified graph shows a clear large-sample improvement for all five curves once the sample size reaches `n = 512` and above.
+- The oracle AIPW benchmark remains the strongest line throughout the experiment, with beta MSE falling from about `4.47e-3` at `n = 256` to `9.33e-4` at `n = 2048`.
+- The neural DML AIPW estimator is the noisiest curve at the smallest sample size. Its average beta MSE is `0.156432` at `n = 256`, then drops sharply to `0.013441` at `n = 512`, `0.006339` at `n = 1024`, and `0.003363` at `n = 2048`.
+- The neural-network joint least-squares beta estimate is much more stable than the DML AIPW estimate at `n = 256`, and it then scales down steadily to `0.002195` by `n = 2048`.
+- The nuisance curves also improve smoothly with the sample size. The `mu` error remains above the `pi` error at every `n`, but both decrease approximately linearly on the `log_2` scale over this range.
+
+Generated figure:
+
+- `examples/plm/figs/1.3/1.3.1_unified_mse_scaling.png`
