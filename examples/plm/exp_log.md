@@ -23,7 +23,7 @@ Reserved for future partial linear model designs.
 
 ### Method1: Neural DML (`PLMDMLEstimator`)
 
-This method implements the double machine learning pipeline for the partial linear model. The data are split into two parts. On the second split, the method fits a neural network approximation to the outcome regression `mu(X)` jointly with an initial coefficient estimate for `beta`, and separately fits a neural network approximation to the treatment regression `pi(X)`. On the first split, it plugs these nuisance estimates into the augmented inverse-propensity-weighted estimator given by Eq. (1.2) of the PLM paper to produce the final estimate of `beta`.
+This method implements the double machine learning pipeline for the partial linear model. The data are split into two parts. On the second split, the method fits a neural network approximation to the outcome regression `mu(X)` jointly with a joint least-squares coefficient estimate for `beta`, and separately fits a neural network approximation to the treatment regression `pi(X)`. On the first split, it plugs these nuisance estimates into the augmented inverse-propensity-weighted estimator given by Eq. (1.2) of the PLM paper to produce the final estimate of `beta`.
 
 The nuisance models are fully connected ReLU networks with batch normalization and residual connections. The implementation uses Adam for stochastic optimization and supports either CPU or accelerator devices supported by PyTorch.
 
@@ -54,7 +54,7 @@ For each estimator, the experiment records the following quantities.
 
 - AIPW estimate of `beta`: the final coefficient estimate returned by the estimator.
 - Squared error of the final `beta` estimate: `(beta_hat - beta_true)^2`.
-- Squared error of the initial `beta` estimate: for the neural DML estimator, this compares the jointly trained neural-network coefficient parameter to the ground truth before the AIPW correction; for the oracle estimator, this is set equal to the final squared error.
+- Squared error of the joint least-squares `beta` estimate: for the neural DML estimator, this compares the coefficient parameter from the joint least-squares neural-network fit on the second split to the ground truth before the AIPW correction; for the oracle estimator, this is set equal to the final squared error.
 - Mean squared error of `mu`: the average squared difference between the predicted outcome regression and the oracle nuisance value on an independent test sample.
 - Mean squared error of `pi`: the average squared difference between the predicted treatment regression and the oracle nuisance value on an independent test sample.
 - For experiments that study nuisance-product behavior, the evaluator also records the empirical test-sample mean of the fitted product `mu_hat(X) * pi_hat(X)`, together with the oracle mean of `mu(X) * pi(X)`, so that cross-trial scatter plots can compare this nuisance summary against the final beta estimation error.
@@ -104,7 +104,7 @@ This design uses a relatively wide network so that the nonlinear nuisance functi
 
 The experiment was run with `10` independent trials for each sample size in `{256, 512, 1024, 2048}`. The summary metrics below are trial averages.
 
-| n | Method | Beta MSE | Initial Beta MSE | Mu MSE | Pi MSE |
+| n | Method | Beta MSE | Joint LSE Beta MSE | Mu MSE | Pi MSE |
 | --- | --- | ---: | ---: | ---: | ---: |
 | 256 | Neural DML | 0.02686 | 0.000214 | 0.02342 | 0.02254 |
 | 256 | Oracle AIPW | 0.002669 | 0.002669 | 0.000000 | 0.000000 |
@@ -134,7 +134,7 @@ Suggested presentation items:
 
 - a summary table of the averaged performance metrics by sample size,
 - a separate plot of beta-estimation mean squared error against `n`,
-- a separate plot of initial-beta mean squared error against `n`,
+- a separate plot of joint least-squares beta mean squared error against `n`,
 - a separate plot of `mu` mean squared error against `n`,
 - a separate plot of `pi` mean squared error against `n`,
 - a short interpretation discussing whether the oracle benchmark reveals a meaningful gap relative to neural DML.
@@ -183,7 +183,7 @@ Additional diagnostic target:
 
 The experiment was run with `10` independent trials for each sample size in `{256, 512, 1024, 2048}`. The summary metrics below are trial averages.
 
-| n | Method | Beta MSE | Initial Beta MSE | Mu MSE | Pi MSE |
+| n | Method | Beta MSE | Joint LSE Beta MSE | Mu MSE | Pi MSE |
 | --- | --- | ---: | ---: | ---: | ---: |
 | 256 | Neural DML | 0.01740 | 0.000174 | 0.02631 | 0.03143 |
 | 256 | Oracle AIPW | 0.002669 | 0.002669 | 0.000000 | 0.000000 |
@@ -213,7 +213,7 @@ Main observations:
 Generated figures:
 
 - `examples/plm/figs/1.1.2_beta_hat_mse.png`
-- `examples/plm/figs/1.1.2_beta_init_mse.png`
+- `examples/plm/figs/1.1.2_beta_joint_lse_mse.png`
 - `examples/plm/figs/1.1.2_mu_mse.png`
 - `examples/plm/figs/1.1.2_pi_mse.png`
 - `examples/plm/figs/1.1.2_beta_error_comparison.png`

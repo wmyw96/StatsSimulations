@@ -85,5 +85,10 @@
 ## 2026-04-19 16:42:00 EDT
 
 - Added dotted experiment-id normalization so the example scripts accept user-facing ids like `1.1.2` while still loading the existing storage artifact `1.1_2`.
-- Extended `examples/plm/vis_result.py` with a single beta-error comparison plot for Experiment `1.1.2`, comparing the DML AIPW estimate, the neural-network initial beta estimate, and the oracle AIPW estimate across sample sizes.
+- Extended `examples/plm/vis_result.py` with a single beta-error comparison plot for Experiment `1.1.2`, comparing the DML AIPW estimate, the neural-network joint least-squares beta estimate, and the oracle AIPW estimate across sample sizes.
 - Regenerated the `1.1.2` figure set using the dotted experiment label and updated `examples/plm/exp_log.md` to list the new comparison figure.
+
+## 2026-04-19 16:50:00 EDT
+
+- Relabeled the user-facing `beta_init_mse` metric as the joint least-squares beta estimate in the PLM report and plotting script.
+- Regenerated the `1.1.2` figures so the standalone beta curve and the beta-error comparison plot use the corrected joint-LSE terminology.

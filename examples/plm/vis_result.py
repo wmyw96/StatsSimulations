@@ -27,11 +27,23 @@ def main() -> None:
     args = parse_args()
     _, display_exp_id = normalize_exp_id(args.exp_id)
     evaluator = build_evaluator_from_exp_id(exp_id=args.exp_id, n_trials=1)
-    metric_to_label = {
-        "beta_hat_mse": "MSE of AIPW beta estimate",
-        "beta_init_mse": "MSE of initial beta estimate",
-        "mu_mse": "MSE of mu estimate",
-        "pi_mse": "MSE of pi estimate",
+    metric_specs = {
+        "beta_hat_mse": {
+            "label": "MSE of AIPW beta estimate",
+            "filename_stem": "beta_hat_mse",
+        },
+        "beta_init_mse": {
+            "label": "MSE of joint least-squares beta estimate",
+            "filename_stem": "beta_joint_lse_mse",
+        },
+        "mu_mse": {
+            "label": "MSE of mu estimate",
+            "filename_stem": "mu_mse",
+        },
+        "pi_mse": {
+            "label": "MSE of pi estimate",
+            "filename_stem": "pi_mse",
+        },
     }
 
     try:
@@ -73,7 +85,8 @@ def main() -> None:
         }
     )
 
-    for metric_key, metric_label in metric_to_label.items():
+    for metric_key, metric_spec in metric_specs.items():
+        metric_label = metric_spec["label"]
         plt.figure(figsize=(6, 4))
         for method_name in method_names:
             x_values = []
@@ -93,7 +106,7 @@ def main() -> None:
         plt.title(f"{display_exp_id}: {metric_label}")
         plt.legend()
         plt.tight_layout()
-        output_path = fig_dir / f"{display_exp_id}_{metric_key}.png"
+        output_path = fig_dir / f"{display_exp_id}_{metric_spec['filename_stem']}.png"
         plt.savefig(output_path, dpi=200)
         plt.close()
         print(f"Saved {output_path}")
@@ -101,7 +114,7 @@ def main() -> None:
     plt.figure(figsize=(6, 4))
     curve_specs = [
         ("dml_nn", "beta_hat_mse", "DML AIPW estimate"),
-        ("dml_nn", "beta_init_mse", "NN initial beta estimate"),
+        ("dml_nn", "beta_init_mse", "NN joint least-squares beta estimate"),
         ("oracle_aipw", "beta_hat_mse", "Oracle AIPW estimate"),
     ]
     for method_name, metric_key, label in curve_specs:
