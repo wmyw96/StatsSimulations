@@ -81,3 +81,9 @@
 - Extended the PLM evaluator to record trial-level nuisance-product summaries from the fitted nuisance functions on the test sample.
 - Updated `examples/plm/vis_result.py` so the scatter plots for Experiment `1.1.2` use `mean(mu_hat * pi_hat)` rather than the earlier `mu_mse * pi_mse` proxy.
 - Ran Experiment `1.1_2` with `10` trials per sample size, generated the new figures, and filled in the `1.1.2` results section of `examples/plm/exp_log.md`.
+
+## 2026-04-19 16:42:00 EDT
+
+- Added dotted experiment-id normalization so the example scripts accept user-facing ids like `1.1.2` while still loading the existing storage artifact `1.1_2`.
+- Extended `examples/plm/vis_result.py` with a single beta-error comparison plot for Experiment `1.1.2`, comparing the DML AIPW estimate, the neural-network initial beta estimate, and the oracle AIPW estimate across sample sizes.
+- Regenerated the `1.1.2` figure set using the dotted experiment label and updated `examples/plm/exp_log.md` to list the new comparison figure.

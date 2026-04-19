@@ -14,17 +14,18 @@ SRC_ROOT = REPO_ROOT / "src"
 if str(SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(SRC_ROOT))
 
-from experiment_defs import build_evaluator_from_exp_id
+from experiment_defs import build_evaluator_from_exp_id, normalize_exp_id
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Visualize PLM simulation results.")
-    parser.add_argument("--exp_id", required=True, help="Experiment identifier, for example 1.1_1.")
+    parser.add_argument("--exp_id", required=True, help="Experiment identifier, for example 1.1.2.")
     return parser.parse_args()
 
 
 def main() -> None:
     args = parse_args()
+    _, display_exp_id = normalize_exp_id(args.exp_id)
     evaluator = build_evaluator_from_exp_id(exp_id=args.exp_id, n_trials=1)
     metric_to_label = {
         "beta_hat_mse": "MSE of AIPW beta estimate",
@@ -89,13 +90,42 @@ def main() -> None:
         plt.xscale("log", base=2)
         plt.xlabel("n")
         plt.ylabel(metric_label)
-        plt.title(f"{args.exp_id}: {metric_label}")
+        plt.title(f"{display_exp_id}: {metric_label}")
         plt.legend()
         plt.tight_layout()
-        output_path = fig_dir / f"{args.exp_id}_{metric_key}.png"
+        output_path = fig_dir / f"{display_exp_id}_{metric_key}.png"
         plt.savefig(output_path, dpi=200)
         plt.close()
         print(f"Saved {output_path}")
+
+    plt.figure(figsize=(6, 4))
+    curve_specs = [
+        ("dml_nn", "beta_hat_mse", "DML AIPW estimate"),
+        ("dml_nn", "beta_init_mse", "NN initial beta estimate"),
+        ("oracle_aipw", "beta_hat_mse", "Oracle AIPW estimate"),
+    ]
+    for method_name, metric_key, label in curve_specs:
+        x_values = []
+        y_values = []
+        for n in n_values:
+            summary = summaries[n]
+            if method_name not in summary:
+                continue
+            x_values.append(n)
+            y_values.append(summary[method_name][metric_key])
+        if x_values:
+            plt.plot(x_values, y_values, marker="o", label=label)
+
+    plt.xscale("log", base=2)
+    plt.xlabel("n")
+    plt.ylabel("Mean squared error of beta estimate")
+    plt.title(f"{display_exp_id}: beta-error comparison")
+    plt.legend()
+    plt.tight_layout()
+    beta_compare_path = fig_dir / f"{display_exp_id}_beta_error_comparison.png"
+    plt.savefig(beta_compare_path, dpi=200)
+    plt.close()
+    print(f"Saved {beta_compare_path}")
 
     trial_points = defaultdict(list)
     for trial in results["trial_results"]:
@@ -121,10 +151,10 @@ def main() -> None:
     plt.yscale("log")
     plt.xlabel("Trial-level mean(mu_hat * pi_hat)")
     plt.ylabel("Trial-level beta_hat squared error")
-    plt.title(f"{args.exp_id}: nuisance-product vs beta error (DML)")
+    plt.title(f"{display_exp_id}: nuisance-product vs beta error (DML)")
     plt.legend()
     plt.tight_layout()
-    combined_scatter_path = fig_dir / f"{args.exp_id}_mu_pi_product_mean_vs_beta_hat_scatter.png"
+    combined_scatter_path = fig_dir / f"{display_exp_id}_mu_pi_product_mean_vs_beta_hat_scatter.png"
     plt.savefig(combined_scatter_path, dpi=200)
     plt.close()
     print(f"Saved {combined_scatter_path}")
@@ -138,13 +168,13 @@ def main() -> None:
         plt.yscale("log")
         plt.xlabel("Trial-level mean(mu_hat * pi_hat)")
         plt.ylabel("Trial-level beta_hat squared error")
-        plt.title(f"{args.exp_id}: nuisance-product vs beta error (n={n})")
+        plt.title(f"{display_exp_id}: nuisance-product vs beta error (n={n})")
         if trial_points[n]:
             reference_level = max(trial_points[n][0]["mu_pi_product_true_mean"], 1e-16)
             plt.axvline(reference_level, color="black", linestyle="--", linewidth=1.0, label="oracle mean(mu*pi)")
             plt.legend()
         plt.tight_layout()
-        per_n_scatter_path = fig_dir / f"{args.exp_id}_n{n}_mu_pi_product_mean_vs_beta_hat_scatter.png"
+        per_n_scatter_path = fig_dir / f"{display_exp_id}_n{n}_mu_pi_product_mean_vs_beta_hat_scatter.png"
         plt.savefig(per_n_scatter_path, dpi=200)
         plt.close()
         print(f"Saved {per_n_scatter_path}")

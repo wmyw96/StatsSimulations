@@ -16,7 +16,7 @@ from experiment_defs import build_evaluator_from_exp_id
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run PLM simulation experiments.")
-    parser.add_argument("--exp_id", required=True, help="Experiment identifier, for example 1.1_1.")
+    parser.add_argument("--exp_id", required=True, help="Experiment identifier, for example 1.1.2.")
     parser.add_argument("--ntrials", required=True, type=int, help="Number of trials to run.")
     parser.add_argument("--seed_offset", default=0, type=int, help="Seed offset for reproducibility.")
     parser.add_argument("--device", default="cpu", help="PyTorch device string.")

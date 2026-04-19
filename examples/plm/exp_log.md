@@ -65,7 +65,7 @@ The summary view aggregates these quantities across repeated trials for each exp
 
 ## 1.1.1
 
-Archived run corresponding to simulation artifact `exp_id = 1.1_1`.
+Archived run for Experiment `1.1.1`, stored in the simulation artifact `1.1_1`.
 
 ### Goal
 
@@ -141,7 +141,7 @@ Suggested presentation items:
 
 ## 1.1.2
 
-Simulation artifact corresponding to `exp_id = 1.1_2`.
+Experiment `1.1.2`, stored in the simulation artifact `1.1_2`.
 
 ### Goal
 
@@ -212,12 +212,13 @@ Main observations:
 
 Generated figures:
 
-- `examples/plm/figs/1.1_2_beta_hat_mse.png`
-- `examples/plm/figs/1.1_2_beta_init_mse.png`
-- `examples/plm/figs/1.1_2_mu_mse.png`
-- `examples/plm/figs/1.1_2_pi_mse.png`
-- `examples/plm/figs/1.1_2_mu_pi_product_mean_vs_beta_hat_scatter.png`
-- `examples/plm/figs/1.1_2_n256_mu_pi_product_mean_vs_beta_hat_scatter.png`
-- `examples/plm/figs/1.1_2_n512_mu_pi_product_mean_vs_beta_hat_scatter.png`
-- `examples/plm/figs/1.1_2_n1024_mu_pi_product_mean_vs_beta_hat_scatter.png`
-- `examples/plm/figs/1.1_2_n2048_mu_pi_product_mean_vs_beta_hat_scatter.png`
+- `examples/plm/figs/1.1.2_beta_hat_mse.png`
+- `examples/plm/figs/1.1.2_beta_init_mse.png`
+- `examples/plm/figs/1.1.2_mu_mse.png`
+- `examples/plm/figs/1.1.2_pi_mse.png`
+- `examples/plm/figs/1.1.2_beta_error_comparison.png`
+- `examples/plm/figs/1.1.2_mu_pi_product_mean_vs_beta_hat_scatter.png`
+- `examples/plm/figs/1.1.2_n256_mu_pi_product_mean_vs_beta_hat_scatter.png`
+- `examples/plm/figs/1.1.2_n512_mu_pi_product_mean_vs_beta_hat_scatter.png`
+- `examples/plm/figs/1.1.2_n1024_mu_pi_product_mean_vs_beta_hat_scatter.png`
+- `examples/plm/figs/1.1.2_n2048_mu_pi_product_mean_vs_beta_hat_scatter.png`

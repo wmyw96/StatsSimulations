@@ -25,6 +25,23 @@ FUNCTION_REGISTRY = {
 }
 
 
+def normalize_exp_id(exp_id: str) -> tuple[str, str]:
+    """Return the storage id and display id for an experiment identifier."""
+    if "_" in exp_id:
+        storage_id = exp_id
+        display_id = exp_id.replace("_", ".")
+        return storage_id, display_id
+
+    parts = exp_id.split(".")
+    if len(parts) < 3:
+        raise ValueError(
+            "Experiment identifiers should look like '1.1.2' or the storage form '1.1_2'."
+        )
+    storage_id = f"{'.'.join(parts[:-1])}_{parts[-1]}"
+    display_id = exp_id
+    return storage_id, display_id
+
+
 def plm_uniform_noise_dgp_generator(param_config: dict, seed: int | None = None) -> PartialLinearModelUniformNoiseDGP:
     """Build a partial linear DGP from a serializable parameter configuration."""
     del seed  # Reserved for future generators that may use NumPy randomness.
@@ -148,11 +165,12 @@ def build_evaluator_from_exp_id(
     result_root: str | Path = DEFAULT_RESULT_ROOT,
 ) -> PLMEvaluator:
     """Build an evaluator from the experiment family encoded in exp_id."""
-    family = exp_id.split("_", 1)[0]
+    storage_id, _ = normalize_exp_id(exp_id)
+    family = storage_id.split("_", 1)[0]
     if family not in EXPERIMENT_FAMILY_BUILDERS:
         raise ValueError(f"Unknown experiment family '{family}'.")
     return EXPERIMENT_FAMILY_BUILDERS[family](
-        exp_id=exp_id,
+        exp_id=storage_id,
         n_trials=n_trials,
         seed_offset=seed_offset,
         device=device,
