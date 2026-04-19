@@ -99,7 +99,33 @@ This design uses a relatively wide network so that the nonlinear nuisance functi
 
 ### Results
 
-To be filled after the experiment is run.
+The experiment was run with `10` independent trials for each sample size in `{256, 512, 1024, 2048}`. The summary metrics below are trial averages.
+
+| n | Method | Beta MSE | Initial Beta MSE | Mu MSE | Pi MSE |
+| --- | --- | ---: | ---: | ---: | ---: |
+| 256 | Neural DML | 0.02686 | 0.000214 | 0.02342 | 0.02254 |
+| 256 | Oracle AIPW | 0.002669 | 0.002669 | 0.000000 | 0.000000 |
+| 512 | Neural DML | 0.01314 | 0.000080 | 0.01394 | 0.01803 |
+| 512 | Oracle AIPW | 0.003089 | 0.003089 | 0.000000 | 0.000000 |
+| 1024 | Neural DML | 0.004042 | 0.000059 | 0.008748 | 0.009004 |
+| 1024 | Oracle AIPW | 0.002424 | 0.002424 | 0.000000 | 0.000000 |
+| 2048 | Neural DML | 0.002253 | 0.000027 | 0.006470 | 0.006261 |
+| 2048 | Oracle AIPW | 0.000826 | 0.000826 | 0.000000 | 0.000000 |
+
+Main observations:
+
+- The AIPW beta mean squared error decreases with sample size for both methods, which is the expected large-sample trend.
+- The oracle benchmark achieves lower beta mean squared error than neural DML at every sample size in this run, so there is a visible gap between the method with estimated nuisance functions and the method with oracle nuisance functions.
+- The nuisance mean squared errors of the neural DML estimator decrease as `n` grows, while the oracle nuisance errors are numerically zero up to floating-point precision, as they should be.
+- A striking feature of this experiment is that the initial joint least-squares beta parameter from neural DML is substantially more accurate than the final AIPW beta estimate. In this design, the AIPW correction appears to introduce noticeable variance relative to the jointly trained beta parameter, even though it is theoretically motivated as the debiased target.
+- The gap between neural DML and oracle narrows as `n` increases, but it remains present at `n = 2048` in this 10-trial run.
+
+Generated figures:
+
+- `examples/plm/figs/1.1_1_beta_hat_mse.png`
+- `examples/plm/figs/1.1_1_beta_init_mse.png`
+- `examples/plm/figs/1.1_1_mu_mse.png`
+- `examples/plm/figs/1.1_1_pi_mse.png`
 
 Suggested presentation items:
 

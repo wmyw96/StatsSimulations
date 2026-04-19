@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 from pathlib import Path
 
@@ -31,6 +32,9 @@ def main() -> None:
     }
 
     try:
+        mpl_config_dir = Path(__file__).resolve().parent / ".mplconfig"
+        mpl_config_dir.mkdir(parents=True, exist_ok=True)
+        os.environ.setdefault("MPLCONFIGDIR", str(mpl_config_dir))
         import matplotlib.pyplot as plt
     except ImportError as error:
         raise SystemExit("matplotlib is required to visualize results.") from error

@@ -5,3 +5,4 @@ __pycache__/
 simulation_results/
 examples/plm/figs/*
 !examples/plm/figs/.gitkeep
+examples/plm/.mplconfig/

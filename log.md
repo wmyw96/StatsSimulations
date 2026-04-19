@@ -59,3 +59,9 @@
 - Implemented `PLMEvaluator` with JSON-based resume, per-trial saving, PLM metric evaluation, and summary queries.
 - Added the PLM experiment-definition file and example scripts for running simulations and plotting separate result figures.
 - Added a unit test for evaluator resume/query behavior and updated the experiment log with the fixed training-epoch setting.
+
+## 2026-04-19 14:10:00 EDT
+
+- Ran experiment `1.1_1` with `10` trials for each sample size and saved the full results to `simulation_results/plm/1.1_1.json`.
+- Generated the separate result figures under `examples/plm/figs`.
+- Wrote a numerical summary and short interpretation of the experiment into `examples/plm/exp_log.md`.
