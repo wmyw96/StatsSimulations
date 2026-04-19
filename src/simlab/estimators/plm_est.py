@@ -108,11 +108,14 @@ class PLMDMLEstimator(Estimator):
         self.batch_size = int(hyper_parameters.get("batch_size", 1024))
         self.seed = hyper_parameters.get("seed")
 
+        if self.seed is not None:
+            _set_torch_seed(int(self.seed))
+
         self.est_mu = ResidualReLUNet(input_dim=d, depth=self.L, width=self.N).to(self.device)
         self.est_pi = ResidualReLUNet(input_dim=d, depth=self.L, width=self.N).to(self.device)
         self.beta = nn.Parameter(torch.zeros(1, device=self.device))
         self.optimizer = torch.optim.Adam(
-            list(self.est_mu.parameters()) + list(self.est_pi.parameters()) + [self.beta],
+            list(self.est_mu.parameters()) + list(self.est_pi.parameters()),
             lr=self.lr,
         )
 
@@ -139,6 +142,8 @@ class PLMDMLEstimator(Estimator):
 
         last_joint_loss = float("nan")
         last_pi_loss = float("nan")
+        full_joint_loss = float("nan")
+        full_pi_loss = float("nan")
         self.est_mu.train()
         self.est_pi.train()
         for _ in range(self.niter):
@@ -146,7 +151,7 @@ class PLMDMLEstimator(Estimator):
                 self.optimizer.zero_grad()
                 mu_pred = self.est_mu(batch_x)
                 pi_pred = self.est_pi(batch_x)
-                joint_loss = torch.mean((self.beta * batch_t + mu_pred - batch_y) ** 2)
+                joint_loss = torch.mean((self.beta.detach() * batch_t + mu_pred - batch_y) ** 2)
                 pi_loss = torch.mean((batch_t - pi_pred) ** 2)
                 total_loss = (
                     joint_loss
@@ -159,6 +164,22 @@ class PLMDMLEstimator(Estimator):
                 last_joint_loss = float(joint_loss.detach().cpu().item())
                 last_pi_loss = float(pi_loss.detach().cpu().item())
 
+            self.est_mu.eval()
+            self.est_pi.eval()
+            with torch.no_grad():
+                mu_d2 = self.est_mu(x2_tensor)
+                pi_d2 = self.est_pi(x2_tensor)
+                profiled_beta = _profile_beta_from_tensors(
+                    t=t2_tensor,
+                    y=y2_tensor,
+                    mu=mu_d2,
+                )
+                self.beta.data.fill_(profiled_beta)
+                full_joint_loss = float(torch.mean((self.beta * t2_tensor + mu_d2 - y2_tensor) ** 2).cpu().item())
+                full_pi_loss = float(torch.mean((t2_tensor - pi_d2) ** 2).cpu().item())
+            self.est_mu.train()
+            self.est_pi.train()
+
         self.est_mu.eval()
         self.est_pi.eval()
         with torch.no_grad():
@@ -169,8 +190,8 @@ class PLMDMLEstimator(Estimator):
         beta_hat = _aipw_beta(d1_y, d1_t, mu_hat, pi_hat)
         diagnostics = {
             "beta_joint": float(self.beta.detach().cpu().item()),
-            "final_joint_loss": last_joint_loss,
-            "final_pi_loss": last_pi_loss,
+            "final_joint_loss": full_joint_loss if np.isfinite(full_joint_loss) else last_joint_loss,
+            "final_pi_loss": full_pi_loss if np.isfinite(full_pi_loss) else last_pi_loss,
             "n_d1": len(d1_x),
             "n_d2": len(d2_x),
             "device": str(self.device),
@@ -261,6 +282,13 @@ def _resolve_device(device: str) -> torch.device:
     return resolved
 
 
+def _set_torch_seed(seed: int) -> None:
+    """Set PyTorch random seeds for reproducible initialization and shuffling."""
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(seed)
+
+
 def _weight_l2_penalty(module: nn.Module) -> torch.Tensor:
     """Compute the sum of squared weights, excluding biases and batch-norm scales."""
     penalty = torch.zeros(1, device=next(module.parameters()).device)
@@ -268,6 +296,15 @@ def _weight_l2_penalty(module: nn.Module) -> torch.Tensor:
         if parameter.ndim > 1:
             penalty = penalty + torch.sum(parameter ** 2)
     return penalty
+
+
+def _profile_beta_from_tensors(t: torch.Tensor, y: torch.Tensor, mu: torch.Tensor) -> float:
+    """Return the profiled least-squares beta for fixed mu on one split."""
+    denominator = torch.mean(t * t)
+    if float(torch.abs(denominator).cpu().item()) <= 1e-12:
+        raise ZeroDivisionError("Cannot profile beta because mean(T^2) is numerically zero.")
+    numerator = torch.mean(t * (y - mu))
+    return float((numerator / denominator).detach().cpu().item())
 
 
 def _validate_feature_matrix(X: np.ndarray, expected_dim: int | None = None) -> np.ndarray:

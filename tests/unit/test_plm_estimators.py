@@ -112,6 +112,40 @@ class PLMEstimatorTests(unittest.TestCase):
         self.assertEqual(result.diagnostics["n_d1"], 4)
         self.assertEqual(result.diagnostics["n_d2"], 5)
 
+    def test_profiled_joint_lse_beta_tracks_nonzero_signal(self) -> None:
+        def sine_first_coordinate(x: np.ndarray) -> np.ndarray:
+            return np.sin(2.0 * np.pi * x[:, [0]]).astype(np.float32)
+
+        dgp = PartialLinearModelUniformNoiseDGP(
+            beta=0.5,
+            func_mu=sine_first_coordinate,
+            func_pi=sine_first_coordinate,
+            d=1,
+            sigma_u=0.5,
+            sigma_eps=0.5,
+        )
+        sample = dgp.sample(n=1024, seed=21, oracle=False)
+        estimator = PLMDMLEstimator(
+            name="dml-profiled-beta",
+            hyper_parameters={
+                "L": 3,
+                "N": 128,
+                "lambda_mu": 1e-4,
+                "lambda_pi": 1e-4,
+                "niter": 200,
+                "lr": 1e-3,
+                "batch_size": 512,
+                "seed": 0,
+            },
+            d=1,
+            device="cpu",
+        )
+
+        result = estimator.fit(sample)
+
+        self.assertGreater(result.diagnostics["beta_joint"], 0.25)
+        self.assertLess(result.diagnostics["beta_joint"], 0.75)
+
 
 if __name__ == "__main__":
     unittest.main()

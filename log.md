@@ -98,3 +98,9 @@
 - Added experiment family `1.2` for the sine-sine PLM with the same settings as `1.1`, except the ground-truth coefficient is `beta = 0.5`.
 - Updated `examples/plm/vis_result.py` so it derives the fixed DGP query configuration from the experiment definition instead of assuming `beta = 0.0`.
 - Ran Experiment `1.2.1` with `10` trials per sample size, generated the new figure set, and filled in the `1.2.1` results section of `examples/plm/exp_log.md`.
+
+## 2026-04-19 18:05:00 EDT
+
+- Diagnosed the inconsistent joint-LSE beta behavior in the `beta = 0.5` PLM setting: under the old single-optimizer joint fit, the flexible `mu` network absorbed most of the `beta * pi(X)` signal, leaving the scalar beta update stuck near zero.
+- Reworked `PLMDMLEstimator` so the nuisance networks are trained with Adam while the joint-LSE beta is updated in profiled closed form on `D2` after each epoch.
+- Added deterministic PyTorch seeding when an estimator seed is provided and added a regression test showing the joint-LSE beta tracks a nonzero signal in the sine-sine PLM.
