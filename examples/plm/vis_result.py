@@ -59,17 +59,16 @@ def main() -> None:
     n_values = list(evaluator.dgp_param_grid["n"])
     result_path = evaluator.result_path
     results = json.loads(result_path.read_text())
+    fixed_dgp_config = {
+        key: value
+        for key, value in evaluator.dgp_param_grid.items()
+        if key != "n"
+    }
 
     summaries = {
         n: evaluator.query_results(
             {
-                "d": 1,
-                "func_mu_name": "sin_2pi_first_coordinate",
-                "func_pi_name": "sin_2pi_first_coordinate",
-                "beta": 0.0,
-                "sigma_u": 0.5,
-                "sigma_eps": 0.5,
-                "n_test": 10000,
+                **fixed_dgp_config,
                 "n": n,
             },
             mode="summary",

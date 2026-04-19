@@ -92,3 +92,9 @@
 
 - Relabeled the user-facing `beta_init_mse` metric as the joint least-squares beta estimate in the PLM report and plotting script.
 - Regenerated the `1.1.2` figures so the standalone beta curve and the beta-error comparison plot use the corrected joint-LSE terminology.
+
+## 2026-04-19 17:15:00 EDT
+
+- Added experiment family `1.2` for the sine-sine PLM with the same settings as `1.1`, except the ground-truth coefficient is `beta = 0.5`.
+- Updated `examples/plm/vis_result.py` so it derives the fixed DGP query configuration from the experiment definition instead of assuming `beta = 0.0`.
+- Ran Experiment `1.2.1` with `10` trials per sample size, generated the new figure set, and filled in the `1.2.1` results section of `examples/plm/exp_log.md`.

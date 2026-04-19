@@ -222,3 +222,78 @@ Generated figures:
 - `examples/plm/figs/1.1.2_n512_mu_pi_product_mean_vs_beta_hat_scatter.png`
 - `examples/plm/figs/1.1.2_n1024_mu_pi_product_mean_vs_beta_hat_scatter.png`
 - `examples/plm/figs/1.1.2_n2048_mu_pi_product_mean_vs_beta_hat_scatter.png`
+
+## 1.2.1
+
+Experiment `1.2.1`, stored in the simulation artifact `1.2_1`.
+
+### Goal
+
+This experiment keeps the same sine-sine one-dimensional partial linear model as the `1.1` family, but changes the target coefficient to a nonzero value. The goal is to study how the beta-estimation error scales with the sample size when `beta = 0.5`, focusing on three quantities:
+
+- the neural DML AIPW estimate of `beta`,
+- the oracle AIPW estimate of `beta`,
+- the neural-network joint least-squares estimate of `beta`.
+
+### Setting and design
+
+Specific data-generating setting:
+
+- DGP class: `PartialLinearModelUniformNoiseDGP`
+- Covariate dimension: `d = 1`
+- Outcome regression: `mu(x) = sin(2 pi x)`
+- Treatment regression: `pi(x) = sin(2 pi x)`
+- Target coefficient: `beta = 0.5`
+- Treatment noise scale: `sigma_u = 0.5`
+- Outcome noise scale: `sigma_eps = 0.5`
+- Training sample sizes: `n in {256, 512, 1024, 2048}`
+- Test sample size: `n_test = 10000`
+
+Method design:
+
+- Compared methods: Neural DML and Oracle AIPW
+- Neural network depth: `L = 3`
+- Neural network width: `N = 512`
+- Outcome-network regularization: `lambda_mu = 1e-4`
+- Treatment-network regularization: `lambda_pi = 1e-4`
+- Optimizer: Adam
+- Learning rate: `lr = 1e-3`
+- Mini-batch size: `batch_size = 1024`
+- Training epochs: `niter = 200`
+- Device: CPU by default unless explicitly changed in the simulation configuration
+
+### Results
+
+The experiment was run with `10` independent trials for each sample size in `{256, 512, 1024, 2048}`. The table below focuses on the three beta-estimation errors requested for this setting.
+
+| n | DML AIPW Beta MSE | Oracle AIPW Beta MSE | Joint LSE Beta MSE |
+| --- | ---: | ---: | ---: |
+| 256 | 0.23944 | 0.002669 | 0.19957 |
+| 512 | 0.74010 | 0.003089 | 0.19320 |
+| 1024 | 0.01988 | 0.002424 | 0.20129 |
+| 2048 | 0.009364 | 0.000826 | 0.19508 |
+
+For reference, the nuisance-estimation errors for Neural DML were:
+
+| n | Mu MSE | Pi MSE |
+| --- | ---: | ---: |
+| 256 | 0.12737 | 0.03157 |
+| 512 | 0.11929 | 0.01975 |
+| 1024 | 0.11841 | 0.009404 |
+| 2048 | 0.11333 | 0.005660 |
+
+Main observations:
+
+- The oracle AIPW estimator remains the strongest benchmark across all sample sizes, with beta mean squared error decreasing from `0.002669` at `n = 256` to `0.000826` at `n = 2048`.
+- The neural DML AIPW estimator is much more variable in this nonzero-beta setting. Its error is large at `n = 256`, becomes even worse at `n = 512`, and then drops substantially at `n = 1024` and `n = 2048`.
+- The joint least-squares beta estimate is much more stable than the DML AIPW estimator at small and moderate sample sizes, but it does not show the same clear improvement with `n`. Its mean squared error stays near `0.2` across the whole range.
+- At the larger sample sizes, the DML AIPW estimator overtakes the joint least-squares estimator by a wide margin: at `n = 2048`, the DML AIPW beta MSE is `0.009364`, versus `0.19508` for the joint least-squares beta estimate.
+- The new beta-comparison figure therefore highlights a useful tradeoff in this design: the joint least-squares beta is more stable in finite samples around `n = 256` to `512`, while the debiased DML AIPW estimate scales much better once the sample size is large enough.
+
+Generated figures:
+
+- `examples/plm/figs/1.2.1_beta_hat_mse.png`
+- `examples/plm/figs/1.2.1_beta_joint_lse_mse.png`
+- `examples/plm/figs/1.2.1_beta_error_comparison.png`
+- `examples/plm/figs/1.2.1_mu_mse.png`
+- `examples/plm/figs/1.2.1_pi_mse.png`

@@ -95,11 +95,48 @@ def build_experiment_1_1(
     result_root: str | Path = DEFAULT_RESULT_ROOT,
 ) -> PLMEvaluator:
     """Build evaluator configuration for experiment family 1.1."""
+    return build_plm_sine_experiment(
+        exp_id=exp_id,
+        beta=0.0,
+        n_trials=n_trials,
+        seed_offset=seed_offset,
+        device=device,
+        result_root=result_root,
+    )
+
+
+def build_experiment_1_2(
+    exp_id: str,
+    n_trials: int,
+    seed_offset: int = 0,
+    device: str = "cpu",
+    result_root: str | Path = DEFAULT_RESULT_ROOT,
+) -> PLMEvaluator:
+    """Build evaluator configuration for experiment family 1.2."""
+    return build_plm_sine_experiment(
+        exp_id=exp_id,
+        beta=0.5,
+        n_trials=n_trials,
+        seed_offset=seed_offset,
+        device=device,
+        result_root=result_root,
+    )
+
+
+def build_plm_sine_experiment(
+    exp_id: str,
+    beta: float,
+    n_trials: int,
+    seed_offset: int = 0,
+    device: str = "cpu",
+    result_root: str | Path = DEFAULT_RESULT_ROOT,
+) -> PLMEvaluator:
+    """Build a sine/sine PLM experiment with configurable beta."""
     dgp_param_grid = {
         "d": 1,
         "func_mu_name": "sin_2pi_first_coordinate",
         "func_pi_name": "sin_2pi_first_coordinate",
-        "beta": 0.0,
+        "beta": float(beta),
         "sigma_u": 0.5,
         "sigma_eps": 0.5,
         "n_test": 10000,
@@ -154,6 +191,7 @@ def build_experiment_1_1(
 
 EXPERIMENT_FAMILY_BUILDERS = {
     "1.1": build_experiment_1_1,
+    "1.2": build_experiment_1_2,
 }
 
 
