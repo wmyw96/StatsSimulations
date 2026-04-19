@@ -106,40 +106,45 @@ def main() -> None:
             trial_points[n].append(
                 {
                     "trial_id": int(trial["trial_id"]),
-                    "mu_pi_product": float(estimator_record["mu_mse"]) * float(estimator_record["pi_mse"]),
+                    "mu_pi_product_mean": float(estimator_record["mu_pi_product_mean"]),
+                    "mu_pi_product_true_mean": float(estimator_record["mu_pi_product_true_mean"]),
                     "beta_sq_error": float(estimator_record["beta_sq_error"]),
                 }
             )
 
     plt.figure(figsize=(6, 4))
     for n in sorted(trial_points):
-        x_values = [max(point["mu_pi_product"], 1e-16) for point in trial_points[n]]
+        x_values = [max(point["mu_pi_product_mean"], 1e-16) for point in trial_points[n]]
         y_values = [max(point["beta_sq_error"], 1e-16) for point in trial_points[n]]
         plt.scatter(x_values, y_values, label=f"n={n}", alpha=0.8)
     plt.xscale("log")
     plt.yscale("log")
-    plt.xlabel("Trial-level mu_mse * pi_mse")
+    plt.xlabel("Trial-level mean(mu_hat * pi_hat)")
     plt.ylabel("Trial-level beta_hat squared error")
     plt.title(f"{args.exp_id}: nuisance-product vs beta error (DML)")
     plt.legend()
     plt.tight_layout()
-    combined_scatter_path = fig_dir / f"{args.exp_id}_mu_pi_product_vs_beta_hat_scatter.png"
+    combined_scatter_path = fig_dir / f"{args.exp_id}_mu_pi_product_mean_vs_beta_hat_scatter.png"
     plt.savefig(combined_scatter_path, dpi=200)
     plt.close()
     print(f"Saved {combined_scatter_path}")
 
     for n in sorted(trial_points):
         plt.figure(figsize=(6, 4))
-        x_values = [max(point["mu_pi_product"], 1e-16) for point in trial_points[n]]
+        x_values = [max(point["mu_pi_product_mean"], 1e-16) for point in trial_points[n]]
         y_values = [max(point["beta_sq_error"], 1e-16) for point in trial_points[n]]
         plt.scatter(x_values, y_values, alpha=0.85)
         plt.xscale("log")
         plt.yscale("log")
-        plt.xlabel("Trial-level mu_mse * pi_mse")
+        plt.xlabel("Trial-level mean(mu_hat * pi_hat)")
         plt.ylabel("Trial-level beta_hat squared error")
         plt.title(f"{args.exp_id}: nuisance-product vs beta error (n={n})")
+        if trial_points[n]:
+            reference_level = max(trial_points[n][0]["mu_pi_product_true_mean"], 1e-16)
+            plt.axvline(reference_level, color="black", linestyle="--", linewidth=1.0, label="oracle mean(mu*pi)")
+            plt.legend()
         plt.tight_layout()
-        per_n_scatter_path = fig_dir / f"{args.exp_id}_n{n}_mu_pi_product_vs_beta_hat_scatter.png"
+        per_n_scatter_path = fig_dir / f"{args.exp_id}_n{n}_mu_pi_product_mean_vs_beta_hat_scatter.png"
         plt.savefig(per_n_scatter_path, dpi=200)
         plt.close()
         print(f"Saved {per_n_scatter_path}")

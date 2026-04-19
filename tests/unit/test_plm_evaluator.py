@@ -56,6 +56,11 @@ class PLMEvaluatorTests(unittest.TestCase):
             self.assertEqual(summary["dml_nn"]["num_trials"], 2)
             self.assertEqual(summary["oracle_aipw"]["num_trials"], 2)
 
+            first_trial = first_results["trial_results"][0]["estimator_results"][0]
+            self.assertIn("mu_pi_product_mean", first_trial)
+            self.assertIn("mu_pi_product_true_mean", first_trial)
+            self.assertIn("mu_pi_product_mse", first_trial)
+
 
 if __name__ == "__main__":
     unittest.main()

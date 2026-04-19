@@ -220,6 +220,9 @@ class PLMEvaluator(Evaluator):
             "beta_init_sq_error": float((beta_initial - beta_true) ** 2),
             "mu_mse": float(np.mean((mu_pred - mu_true) ** 2)),
             "pi_mse": float(np.mean((pi_pred - pi_true) ** 2)),
+            "mu_pi_product_mean": float(np.mean(mu_pred * pi_pred)),
+            "mu_pi_product_true_mean": float(np.mean(mu_true * pi_true)),
+            "mu_pi_product_mse": float(np.mean((mu_pred * pi_pred - mu_true * pi_true) ** 2)),
             "runtime_sec": runtime_sec,
         }
 

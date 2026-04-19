@@ -75,3 +75,9 @@
 
 - Reorganized `examples/plm/exp_log.md` so the completed baseline run is archived as Experiment `1.1.1`.
 - Added a new Experiment `1.1.2` section describing the next run, which will keep the same sine-sine PLM setting but focus on a product-based nuisance diagnostic built from the fitted nuisance functions themselves.
+
+## 2026-04-19 16:20:00 EDT
+
+- Extended the PLM evaluator to record trial-level nuisance-product summaries from the fitted nuisance functions on the test sample.
+- Updated `examples/plm/vis_result.py` so the scatter plots for Experiment `1.1.2` use `mean(mu_hat * pi_hat)` rather than the earlier `mu_mse * pi_mse` proxy.
+- Ran Experiment `1.1_2` with `10` trials per sample size, generated the new figures, and filled in the `1.1.2` results section of `examples/plm/exp_log.md`.

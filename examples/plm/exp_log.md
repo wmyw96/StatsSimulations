@@ -57,6 +57,7 @@ For each estimator, the experiment records the following quantities.
 - Squared error of the initial `beta` estimate: for the neural DML estimator, this compares the jointly trained neural-network coefficient parameter to the ground truth before the AIPW correction; for the oracle estimator, this is set equal to the final squared error.
 - Mean squared error of `mu`: the average squared difference between the predicted outcome regression and the oracle nuisance value on an independent test sample.
 - Mean squared error of `pi`: the average squared difference between the predicted treatment regression and the oracle nuisance value on an independent test sample.
+- For experiments that study nuisance-product behavior, the evaluator also records the empirical test-sample mean of the fitted product `mu_hat(X) * pi_hat(X)`, together with the oracle mean of `mu(X) * pi(X)`, so that cross-trial scatter plots can compare this nuisance summary against the final beta estimation error.
 
 The summary view aggregates these quantities across repeated trials for each experimental configuration.
 
@@ -140,6 +141,8 @@ Suggested presentation items:
 
 ## 1.1.2
 
+Simulation artifact corresponding to `exp_id = 1.1_2`.
+
 ### Goal
 
 This experiment keeps the same one-dimensional partial linear model family but shifts the focus to a nuisance-product diagnostic. The goal is to study how a summary built from the fitted nuisance functions scales with the final beta estimation error across repeated trials, while still comparing neural DML against the oracle benchmark on the standard metrics.
@@ -173,9 +176,48 @@ Method design:
 
 Additional diagnostic target:
 
-- In addition to the standard summary metrics, this experiment will record and visualize a product-based nuisance summary constructed from the fitted nuisance functions `mu_hat` and `pi_hat` themselves, rather than only from their separate mean squared errors.
-- The corresponding scatter plot will study how that nuisance-product quantity varies with the final beta estimation error across trials.
+- In addition to the standard summary metrics, this experiment records the empirical test-sample mean of `mu_hat(X) * pi_hat(X)` for each trial, along with the oracle mean of `mu(X) * pi(X)`.
+- The corresponding scatter plot studies how this fitted nuisance-product summary varies with the final beta estimation error across trials.
 
 ### Results
 
-Pending. This section will be filled once the `1.1.2` run is completed and the product-based diagnostic is computed from the fitted nuisance estimates.
+The experiment was run with `10` independent trials for each sample size in `{256, 512, 1024, 2048}`. The summary metrics below are trial averages.
+
+| n | Method | Beta MSE | Initial Beta MSE | Mu MSE | Pi MSE |
+| --- | --- | ---: | ---: | ---: | ---: |
+| 256 | Neural DML | 0.01740 | 0.000174 | 0.02631 | 0.03143 |
+| 256 | Oracle AIPW | 0.002669 | 0.002669 | 0.000000 | 0.000000 |
+| 512 | Neural DML | 0.01140 | 0.000038 | 0.01891 | 0.01590 |
+| 512 | Oracle AIPW | 0.003089 | 0.003089 | 0.000000 | 0.000000 |
+| 1024 | Neural DML | 0.004671 | 0.000068 | 0.008853 | 0.009395 |
+| 1024 | Oracle AIPW | 0.002424 | 0.002424 | 0.000000 | 0.000000 |
+| 2048 | Neural DML | 0.002102 | 0.000047 | 0.005552 | 0.005913 |
+| 2048 | Oracle AIPW | 0.000826 | 0.000826 | 0.000000 | 0.000000 |
+
+Product diagnostic summary for Neural DML:
+
+| n | Mean of `mu_hat * pi_hat` | Oracle mean of `mu * pi` | Raw corr. with beta squared error |
+| --- | ---: | ---: | ---: |
+| 256 | 0.49958 | 0.50110 | -0.223 |
+| 512 | 0.48679 | 0.50110 | 0.303 |
+| 1024 | 0.49949 | 0.50110 | -0.263 |
+| 2048 | 0.50477 | 0.50110 | -0.431 |
+
+Main observations:
+
+- The standard beta, `mu`, and `pi` error trends are qualitatively similar to the archived baseline run: oracle AIPW remains better than neural DML at every sample size, and the DML nuisance errors decrease as `n` grows.
+- The fitted nuisance-product mean `mean(mu_hat(X) * pi_hat(X))` is already quite close to the oracle benchmark `mean(mu(X) * pi(X))` at every sample size. In this design, the product mean itself is therefore estimated fairly stably.
+- Despite that stability, the combined scatter plot does not reveal a strong monotone relationship between the product mean and the final beta squared error across trials. The overall raw correlation is `-0.053`, and the overall log-scale correlation is `-0.091`.
+- The per-`n` scatter plots also do not show a consistent direction of association. This suggests that, for this sine-sine one-dimensional design, variation in the scalar nuisance-product mean is not a strong driver of the remaining trial-to-trial beta error.
+
+Generated figures:
+
+- `examples/plm/figs/1.1_2_beta_hat_mse.png`
+- `examples/plm/figs/1.1_2_beta_init_mse.png`
+- `examples/plm/figs/1.1_2_mu_mse.png`
+- `examples/plm/figs/1.1_2_pi_mse.png`
+- `examples/plm/figs/1.1_2_mu_pi_product_mean_vs_beta_hat_scatter.png`
+- `examples/plm/figs/1.1_2_n256_mu_pi_product_mean_vs_beta_hat_scatter.png`
+- `examples/plm/figs/1.1_2_n512_mu_pi_product_mean_vs_beta_hat_scatter.png`
+- `examples/plm/figs/1.1_2_n1024_mu_pi_product_mean_vs_beta_hat_scatter.png`
+- `examples/plm/figs/1.1_2_n2048_mu_pi_product_mean_vs_beta_hat_scatter.png`
