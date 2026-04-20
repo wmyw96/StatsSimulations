@@ -227,3 +227,8 @@
 - Added Experiment `1.5.8`, using the easier outcome regression `mu(x) = sin(pi x_1) + cos(pi x_2)` and a four-level treatment-regression family that perturbs `mu(x)` by increasingly rough same-coordinate components.
 - Extended the function registry and exact-id evaluator tests for `1.5.8`, ran the full `30`-trial experiment, and generated `examples/plm/figs/1.5/1.5.8_pi_complexity_mse_comparison.png`.
 - Documented that `1.5.8` is the closest match so far to the requested design: the first three settings show both DML `pi` MSE and DML beta MSE increasing together, while the fourth setting still breaks the monotone beta trend.
+
+## 2026-04-20 22:05:00 EDT
+
+- Added a design note for the next `1.5` direction: split `mu` into a dominant smooth component `g1` and a small-amplitude rough component `g2`, then build `pi` so the rough `g2` direction is amplified relative to `mu`.
+- This is intended to keep the outcome regression mostly easy while making the treatment regression increasingly aligned with the hard-to-learn component, which is a better candidate for forcing both nuisance error and DML beta error upward together.
