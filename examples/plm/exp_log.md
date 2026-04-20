@@ -1348,3 +1348,65 @@ Main observations:
 Generated figures:
 
 - `examples/plm/figs/1.5/1.5.8_pi_complexity_mse_comparison.png`
+
+## 1.5.9
+
+Experiment `1.5.9`, stored in the simulation artifact `1.5_9`.
+
+### Goal
+
+This experiment implements the correlated `g_1/g_2` idea directly. The intention is to keep the outcome regression mostly smooth, while building the treatment regression from the same smooth component plus an increasingly amplified rough component that stays highly aligned with it.
+
+### Setting and design
+
+Specific data-generating setting:
+
+- DGP class: `PartialLinearModelUniformNoiseDGP`
+- Covariate dimension: `d = 4`
+- Smooth component: `g_1(x) = sin(pi x_1) + cos(pi x_2)`
+- Rough correlated component: `g_2(x) = sign(g_1(x)) * 0.5 * (|sin(8 pi x_1)| + |cos(8 pi x_2)|)`
+- Outcome regression: `mu(x) = 0.95 * g_1(x) + 0.05 * g_2(x)`
+- Treatment regression candidates:
+  - `pi_1(x) = g_1(x) + 0.05 * g_2(x)`
+  - `pi_2(x) = g_1(x) + 0.10 * g_2(x)`
+  - `pi_3(x) = g_1(x) + 0.20 * g_2(x)`
+- Trial-level target coefficient: `beta ~ Unif[-0.5, 0.5]`
+- Treatment noise scale: `sigma_u = 0.5`
+- Outcome noise scale: `sigma_eps = 0.5`
+- Training sample size: `n = 1024`
+- Test sample size: `n_test = 10000`
+- Number of trials: `30`
+
+Method design:
+
+- Compared methods: Neural DML and Oracle AIPW
+- Neural network depth: `L = 3`
+- Neural network width: `N = 512`
+- Outcome-network regularization: `lambda_mu = 2e-5`
+- Treatment-network regularization: `lambda_pi = 2e-5`
+- Optimizer: Adam with profiled closed-form updates for the joint least-squares beta on `D2`
+- Learning rate: `lr = 1e-3`
+- Mini-batch size: `batch_size = 1024`
+- Training epochs: `niter = 200`
+- Device: CPU by default unless explicitly changed in the simulation configuration
+
+### Results
+
+Average MSE over `30` trials:
+
+| pi family | Oracle AIPW beta MSE | DML AIPW beta MSE | Joint LSE beta MSE | DML mu MSE | DML pi MSE |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| `pi_1` | 0.002801 | 0.037985 | 0.249516 | 0.342280 | 0.056181 |
+| `pi_2` | 0.002833 | 0.042018 | 0.248710 | 0.356475 | 0.058495 |
+| `pi_3` | 0.002903 | 0.033719 | 0.229804 | 0.357388 | 0.064695 |
+
+Main observations:
+
+- The treatment nuisance error does increase across the family, but only mildly: `0.056181 -> 0.058495 -> 0.064695`.
+- The DML beta error does not increase cleanly with it. It rises slightly from `pi_1` to `pi_2`, then drops at `pi_3`.
+- So the correlated `g_1/g_2` construction is conceptually appealing, but in this concrete parameterization it still does not produce the monotone beta degradation we are looking for.
+- One likely reason is that the rough component is still too small relative to the dominant smooth component. The treatment-regression difficulty changes, but not enough to dominate the overall fitting geometry.
+
+Generated figures:
+
+- `examples/plm/figs/1.5/1.5.9_pi_complexity_mse_comparison.png`

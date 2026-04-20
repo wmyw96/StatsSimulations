@@ -228,6 +228,12 @@
 - Extended the function registry and exact-id evaluator tests for `1.5.8`, ran the full `30`-trial experiment, and generated `examples/plm/figs/1.5/1.5.8_pi_complexity_mse_comparison.png`.
 - Documented that `1.5.8` is the closest match so far to the requested design: the first three settings show both DML `pi` MSE and DML beta MSE increasing together, while the fourth setting still breaks the monotone beta trend.
 
+## 2026-04-20 22:40:00 EDT
+
+- Added Experiment `1.5.9`, implementing the correlated `g1/g2` design with `mu(x) = 0.95 g_1(x) + 0.05 g_2(x)` and a three-level treatment-regression family `g_1(x) + b g_2(x)` for increasing `b`.
+- Extended the function registry and exact-id evaluator tests for `1.5.9`, ran the full `30`-trial experiment, and generated `examples/plm/figs/1.5/1.5.9_pi_complexity_mse_comparison.png`.
+- Documented that the treatment-regression MSE does increase under this correlated construction, but the DML beta MSE still does not rise monotonically, so the family remains only partially successful.
+
 ## 2026-04-20 22:05:00 EDT
 
 - Added a design note for the next `1.5` direction: split `mu` into a dominant smooth component `g1` and a small-amplitude rough component `g2`, then build `pi` so the rough `g2` direction is amplified relative to `mu`.
