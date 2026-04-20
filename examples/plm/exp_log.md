@@ -1164,3 +1164,63 @@ Main observations:
 Generated figures:
 
 - `examples/plm/figs/1.5/1.5.5_pi_complexity_mse_comparison.png`
+
+## 1.5.6
+
+Experiment `1.5.6`, stored in the simulation artifact `1.5_6`.
+
+### Goal
+
+This experiment tests whether moving from a one-dimensional nuisance structure to a genuinely four-dimensional one makes the DML problem meaningfully harder. The goal is not only to increase the difficulty of estimating `pi(x)`, but also to make the overall target-estimation problem materially harsher for both DML and joint least-squares.
+
+### Setting and design
+
+Specific data-generating setting:
+
+- DGP class: `PartialLinearModelUniformNoiseDGP`
+- Covariate dimension: `d = 4`
+- Outcome regression: `mu(x) = 0.5 * sum_{j=1}^4 sin(2 pi x_j)`
+- Treatment regression candidates:
+  - `pi_1(x) = 0.98 * mu(x) + sqrt(1 - 0.98^2) * 0.5 * sum_{j=1}^4 sqrt(2) * cos(2 pi x_j)`
+  - `pi_2(x) = 0.98 * mu(x) + sqrt(1 - 0.98^2) * 0.5 * sum_{j=1}^4 sqrt(2) * cos(8 pi x_j)`
+  - `pi_3(x) = 0.98 * mu(x) + sqrt(1 - 0.98^2) * 0.5 * sum_{j=1}^4 sign(sin(32 pi x_j))`
+- Trial-level target coefficient: `beta ~ Unif[-0.5, 0.5]`
+- Treatment noise scale: `sigma_u = 0.5`
+- Outcome noise scale: `sigma_eps = 0.5`
+- Training sample size: `n = 1024`
+- Test sample size: `n_test = 10000`
+- Number of trials: `30`
+
+Method design:
+
+- Compared methods: Neural DML and Oracle AIPW
+- Neural network depth: `L = 3`
+- Neural network width: `N = 512`
+- Outcome-network regularization: `lambda_mu = 2e-5`
+- Treatment-network regularization: `lambda_pi = 2e-5`
+- Optimizer: Adam with profiled closed-form updates for the joint least-squares beta on `D2`
+- Learning rate: `lr = 1e-3`
+- Mini-batch size: `batch_size = 1024`
+- Training epochs: `niter = 200`
+- Device: CPU by default unless explicitly changed in the simulation configuration
+
+### Results
+
+Average MSE over `30` trials:
+
+| pi family | Oracle AIPW beta MSE | DML AIPW beta MSE | Joint LSE beta MSE | DML mu MSE | DML pi MSE |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| `pi_1` | 0.002639 | 0.195190 | 0.435389 | 0.383664 | 0.195469 |
+| `pi_2` | 0.002658 | 0.120992 | 0.352667 | 0.348962 | 0.254023 |
+| `pi_3` | 0.002554 | 0.121511 | 0.334499 | 0.345050 | 0.251645 |
+
+Main observations:
+
+- Moving to `d = 4` succeeds at the main goal: the entire estimation problem becomes dramatically harder. Compared with the one-dimensional `1.5.5` family, the DML nuisance errors jump from roughly `10^{-2}` to roughly `10^{-1}`, and the beta estimators degrade by one to two orders of magnitude.
+- The treatment nuisance does get harder as we move from the low-frequency smooth `pi_1` to the higher-frequency smooth `pi_2`. The discontinuous `pi_3` stays comparably difficult to `pi_2`, rather than becoming much worse again.
+- The DML and joint LSE beta errors are both very large in all three settings, which is the key qualitative change relative to the one-dimensional experiments. In that sense, the four-dimensional setup does make DML genuinely hard to estimate.
+- The beta errors still do not rise monotonically with the treatment-regression difficulty. Instead, the hardest overall beta case is the smooth but highly confounded `pi_1`, while `pi_2` and `pi_3` have similarly bad but slightly smaller beta errors. This again points to an interaction between nuisance difficulty and identification geometry, rather than a simple one-number control through `pi` MSE alone.
+
+Generated figures:
+
+- `examples/plm/figs/1.5/1.5.6_pi_complexity_mse_comparison.png`

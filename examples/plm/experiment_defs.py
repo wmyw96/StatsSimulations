@@ -145,6 +145,32 @@ def fixed_overlap_pi_4_first_coordinate(x: np.ndarray) -> np.ndarray:
     return 0.98 * mu + np.sqrt(1.0 - 0.98**2) * aux
 
 
+def sin_2pi_four_coordinates(x: np.ndarray) -> np.ndarray:
+    """Return a four-dimensional smooth outcome regression with matched scale."""
+    return 0.5 * np.sum(np.sin(2.0 * np.pi * x), axis=1, keepdims=True)
+
+
+def fixed_overlap_d4_pi_1(x: np.ndarray) -> np.ndarray:
+    """High-overlap smooth low-frequency treatment regression in four dimensions."""
+    mu = sin_2pi_four_coordinates(x)
+    aux = 0.5 * np.sum(np.sqrt(2.0) * np.cos(2.0 * np.pi * x), axis=1, keepdims=True)
+    return 0.98 * mu + np.sqrt(1.0 - 0.98**2) * aux
+
+
+def fixed_overlap_d4_pi_2(x: np.ndarray) -> np.ndarray:
+    """High-overlap smooth high-frequency treatment regression in four dimensions."""
+    mu = sin_2pi_four_coordinates(x)
+    aux = 0.5 * np.sum(np.sqrt(2.0) * np.cos(8.0 * np.pi * x), axis=1, keepdims=True)
+    return 0.98 * mu + np.sqrt(1.0 - 0.98**2) * aux
+
+
+def fixed_overlap_d4_pi_3(x: np.ndarray) -> np.ndarray:
+    """High-overlap discontinuous high-frequency treatment regression in four dimensions."""
+    mu = sin_2pi_four_coordinates(x)
+    aux = 0.5 * np.sum(np.sign(np.sin(32.0 * np.pi * x)), axis=1, keepdims=True)
+    return 0.98 * mu + np.sqrt(1.0 - 0.98**2) * aux
+
+
 FUNCTION_REGISTRY = {
     "sin_2pi_first_coordinate": sin_2pi_first_coordinate,
     "sin_4pi_first_coordinate": sin_4pi_first_coordinate,
@@ -163,6 +189,10 @@ FUNCTION_REGISTRY = {
     "fixed_overlap_pi_2_first_coordinate": fixed_overlap_pi_2_first_coordinate,
     "fixed_overlap_pi_3_first_coordinate": fixed_overlap_pi_3_first_coordinate,
     "fixed_overlap_pi_4_first_coordinate": fixed_overlap_pi_4_first_coordinate,
+    "sin_2pi_four_coordinates": sin_2pi_four_coordinates,
+    "fixed_overlap_d4_pi_1": fixed_overlap_d4_pi_1,
+    "fixed_overlap_d4_pi_2": fixed_overlap_d4_pi_2,
+    "fixed_overlap_d4_pi_3": fixed_overlap_d4_pi_3,
 }
 
 FUNCTION_LABELS = {
@@ -183,6 +213,10 @@ FUNCTION_LABELS = {
     "fixed_overlap_pi_2_first_coordinate": r"$0.98\,\mu(x)+\sqrt{1-0.98^2}\sqrt{2}\cos(8\pi x)$",
     "fixed_overlap_pi_3_first_coordinate": r"$0.98\,\mu(x)+\sqrt{1-0.98^2}\operatorname{sign}(\sin(8\pi x))$",
     "fixed_overlap_pi_4_first_coordinate": r"$0.98\,\mu(x)+\sqrt{1-0.98^2}\operatorname{sign}(\sin(64\pi x))$",
+    "sin_2pi_four_coordinates": r"$0.5\sum_{j=1}^4 \sin(2\pi x_j)$",
+    "fixed_overlap_d4_pi_1": r"$0.98\,\mu(x)+\sqrt{1-0.98^2}\,0.5\sum_{j=1}^4 \sqrt{2}\cos(2\pi x_j)$",
+    "fixed_overlap_d4_pi_2": r"$0.98\,\mu(x)+\sqrt{1-0.98^2}\,0.5\sum_{j=1}^4 \sqrt{2}\cos(8\pi x_j)$",
+    "fixed_overlap_d4_pi_3": r"$0.98\,\mu(x)+\sqrt{1-0.98^2}\,0.5\sum_{j=1}^4 \operatorname{sign}(\sin(32\pi x_j))$",
 }
 
 
@@ -1076,6 +1110,81 @@ def build_experiment_1_5_5(
     )
 
 
+def build_experiment_1_5_6(
+    exp_id: str,
+    n_trials: int,
+    seed_offset: int = 0,
+    device: str = "cpu",
+    result_root: str | Path = DEFAULT_RESULT_ROOT,
+) -> PLMEvaluator:
+    """Build the four-dimensional fixed-overlap pi-complexity experiment."""
+    dgp_param_grid = {
+        "d": 4,
+        "func_mu_name": "sin_2pi_four_coordinates",
+        "func_pi_name": [
+            "fixed_overlap_d4_pi_1",
+            "fixed_overlap_d4_pi_2",
+            "fixed_overlap_d4_pi_3",
+        ],
+        "beta_sampler_name": "uniform",
+        "beta_low": -0.5,
+        "beta_high": 0.5,
+        "sigma_u": 0.5,
+        "sigma_eps": 0.5,
+        "n_test": 10000,
+        "n": [1024],
+    }
+
+    dml_method_config = {
+        "L": 3,
+        "N": 512,
+        "lambda_mu": 2e-5,
+        "lambda_pi": 2e-5,
+        "niter": 200,
+        "lr": 1e-3,
+        "batch_size": 1024,
+        "device": device,
+        "seed_mode": "trial_seed",
+        "d": 4,
+    }
+
+    oracle_method_config = {
+        "func_mu_name": "sin_2pi_four_coordinates",
+        "func_pi_name": None,
+        "follows_dgp_pi": True,
+    }
+
+    estimators = [
+        {
+            "name": "dml_nn",
+            "is_oracle": False,
+            "factory_name": "make_plm_dml_estimator",
+            "method_config": deepcopy(dml_method_config),
+            "accepts_trial_seed": True,
+            "factory": _make_trial_seeded_dml_factory(dml_method_config),
+        },
+        {
+            "name": "oracle_aipw",
+            "is_oracle": True,
+            "factory_name": "make_plm_oracle_estimator",
+            "method_config": deepcopy(oracle_method_config),
+            "accepts_dgp_config": True,
+            "factory": _make_oracle_factory(oracle_method_config),
+        },
+    ]
+
+    return PLMEvaluator(
+        exp_name=EXPERIMENT_NAME,
+        exp_id=exp_id,
+        dgp_generator=plm_uniform_noise_dgp_generator,
+        dgp_param_grid=dgp_param_grid,
+        estimators=estimators,
+        n_trials=n_trials,
+        seed_offset=seed_offset,
+        result_root=result_root,
+    )
+
+
 EXPERIMENT_FAMILY_BUILDERS = {
     "1.1": build_experiment_1_1,
     "1.2": build_experiment_1_2,
@@ -1100,6 +1209,7 @@ EXPERIMENT_ID_BUILDERS = {
     "1.5_3": build_experiment_1_5_3,
     "1.5_4": build_experiment_1_5_4,
     "1.5_5": build_experiment_1_5_5,
+    "1.5_6": build_experiment_1_5_6,
 }
 
 

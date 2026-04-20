@@ -209,3 +209,9 @@
 - Added Experiment `1.5.5`, a fixed-overlap `pi` family that keeps the treatment regression highly aligned with `mu(x) = sin(2 pi x)` while increasing its roughness from smooth cosine to high-frequency discontinuous sign waves.
 - Extended the exact-id registry/tests for `1.5.5`, ran the new experiment with `30` trials per treatment-regression choice, and generated `examples/plm/figs/1.5/1.5.5_pi_complexity_mse_comparison.png`.
 - Documented that `1.5.5` finally makes DML `pi` error increase monotonically across the four candidates, even though the DML and joint-LSE beta errors still do not degrade monotonically with that nuisance difficulty.
+
+## 2026-04-20 19:20:00 EDT
+
+- Added Experiment `1.5.6`, which moves the nuisance structure to `d = 4` with `mu(x) = 0.5 * sum_{j=1}^4 sin(2 pi x_j)` and a three-level fixed-overlap `pi` family ranging from smooth low-frequency to discontinuous high-frequency.
+- Extended the function registry and exact-id evaluator tests for the new four-dimensional family, then ran `1.5.6` with `30` trials and generated `examples/plm/figs/1.5/1.5.6_pi_complexity_mse_comparison.png`.
+- Documented that the `d = 4` setup makes the nuisance fits and both beta estimators dramatically harder overall, even though the beta errors still do not degrade monotonically with the standalone treatment-regression MSE.
