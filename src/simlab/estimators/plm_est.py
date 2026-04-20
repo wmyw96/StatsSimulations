@@ -458,7 +458,7 @@ class PLMMinimaxDebiasEstimator(PLMDMLEstimator):
         lambda_debias = (
             float(self.lambda_debias)
             if self.lambda_debias is not None
-            else 1.0 / float(np.sqrt(len(d1_x)))
+            else _default_lambda_debias(len(d1_x))
         )
         a_hat, debias_diagnostics = _fit_minimax_debiasing_weights(
             x=d1_x,
@@ -739,3 +739,10 @@ def _aipw_beta(
     if abs(denominator) <= 1e-8:
         raise ZeroDivisionError("The AIPW denominator is too close to zero.")
     return numerator / denominator
+
+
+def _default_lambda_debias(n: int) -> float:
+    """Return the default debiasing penalty level based on the D1 sample size."""
+    if n <= 0:
+        raise ValueError("n must be positive for the default debiasing penalty.")
+    return 1.0 / (float(np.sqrt(n)) * float(np.log2(max(n, 2))))

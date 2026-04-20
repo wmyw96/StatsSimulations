@@ -177,6 +177,7 @@ def main() -> None:
     curve_specs = [
         ("dml_nn", "beta_hat_mse", "DML AIPW estimate"),
         ("dml_nn", "beta_init_mse", "NN joint least-squares beta estimate"),
+        ("plm_minimax_debias", "beta_hat_mse", "Minimax debias estimate"),
         ("oracle_aipw", "beta_hat_mse", "Oracle AIPW estimate"),
     ]
     for method_name, metric_key, label in curve_specs:
@@ -267,6 +268,7 @@ def _plot_family_13_unified(
         ("oracle_aipw", "beta_hat_mse", "Oracle AIPW", COLOR_BANK["myred"], "-"),
         ("dml_nn", "beta_hat_mse", "DML AIPW", COLOR_BANK["myorange"], "-"),
         ("dml_nn", "beta_init_mse", "NN joint LSE beta", COLOR_BANK["mygreen"], "-"),
+        ("plm_minimax_debias", "beta_hat_mse", "Minimax debias beta", COLOR_BANK["mypurple"], "-"),
         ("dml_nn", "mu_mse", "DML mu", COLOR_BANK["myblue"], "--"),
         ("dml_nn", "pi_mse", "DML pi", COLOR_BANK["mylightblue"], "--"),
     ]
@@ -656,6 +658,7 @@ def _plot_family_15_pi_complexity(
         ("oracle_aipw", "beta_hat_mse", "Oracle AIPW beta", COLOR_BANK["myred"], "-"),
         ("dml_nn", "beta_hat_mse", "DML AIPW beta", COLOR_BANK["myorange"], "-"),
         ("dml_nn", "beta_init_mse", "NN joint LSE beta", COLOR_BANK["mygreen"], "-"),
+        ("plm_minimax_debias", "beta_hat_mse", "Minimax debias beta", COLOR_BANK["mypurple"], "-"),
         ("dml_nn", "mu_mse", "DML mu", COLOR_BANK["myblue"], "--"),
         ("dml_nn", "pi_mse", "DML pi", COLOR_BANK["mylightblue"], "--"),
     ]

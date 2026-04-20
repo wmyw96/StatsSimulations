@@ -305,7 +305,11 @@ class PLMEstimatorTests(unittest.TestCase):
 
         result = estimator.fit(sample)
 
-        self.assertAlmostEqual(result.diagnostics["lambda_debias"], 1.0 / np.sqrt(5), places=6)
+        self.assertAlmostEqual(
+            result.diagnostics["lambda_debias"],
+            1.0 / (np.sqrt(5) * np.log2(5)),
+            places=6,
+        )
 
 
 if __name__ == "__main__":

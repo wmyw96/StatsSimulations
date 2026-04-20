@@ -63,6 +63,35 @@ Default hyper-parameters:
 - `batch_size = 1024`: mini-batch size used during training.
 - `device = "cpu"` by default: computation device for the neural network fitting routine.
 
+### Method4: Paper Minimax Debiasing Estimator (`PLMMinimaxDebiasEstimator`)
+
+This method follows the estimator construction in equation `(2.3)` of `aplm.pdf`. It first fits the initial outcome model and joint least-squares coefficient on the second split, as in the neural DML baseline. It then returns to the first split and solves a minimax empirical debiasing problem over bounded weights `a_1, ..., a_n`, where an adversarial difference-class neural network searches for the hardest imbalance in the class `{\beta T + f(X) : \beta \in \mathbb{R}, f \in \mathcal{G}_\mu - \mathcal{G}_\mu}`. The final coefficient estimate is the weighted average `n^{-1} \sum_i (Y_i - \hat{g}(X_i)) a_i`.
+
+In our implementation, the inner stabilization term uses
+
+```text
+(1 / n) * sum_i (beta * T_i + f(X_i))^2
+```
+
+instead of the paper’s original `(1 / n) * sum_i f^2(X_i)`, following the requested numerical-stability adjustment.
+
+Default hyper-parameters:
+
+- `L = 3`: depth of the neural networks used both for the initial nuisance fit and for the adversarial difference-class learner.
+- `N = 512`: width of those neural networks.
+- `lambda_mu = 1e-4`: L2 regularization level for the initial outcome learner.
+- `lambda_pi = 1e-4`: L2 regularization level for the initial treatment learner.
+- `niter = 200`: number of epochs used for the initial joint least-squares nuisance fit on the second split.
+- `lr = 1e-3`: Adam learning rate for the initial nuisance fit.
+- `batch_size = 1024`: mini-batch size for the initial nuisance fit.
+- `lambda_debias = 1 / (sqrt(n) * log_2(n))` by default, where `n` denotes the size of the debiasing split `D1`.
+- `weight_bound = 5.0`: absolute bound on each empirical debiasing weight.
+- `niter_debias = 200` by default: number of outer optimization steps for the debiasing weights.
+- `niter_adversary = 5` by default: number of adversary updates per outer debiasing step.
+- `debias_lr = 1e-3` by default: learning rate for both the debiasing weights and the adversarial network.
+- `variance_mode = "constant_one"` by default: uses `\hat v \equiv 1`, which is appropriate for the current homoskedastic simulation studies.
+- `device = "cpu"` by default: computation device for the neural-network routines.
+
 ## Evaluation
 
 For each estimator, the experiment records the following quantities.

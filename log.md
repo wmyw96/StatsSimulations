@@ -277,3 +277,9 @@
 - Implemented a new paper-style PLM estimator based on the minimax debiasing program in equation `(2.3)` of `aplm.pdf`, with the requested stabilized inner penalty `n^{-1} \\, \\sum_i (\\beta T_i + f(X_i))^2` replacing the paper’s original `n^{-1} \\, \\sum_i f^2(X_i)`.
 - Added the new `PLMMinimaxDebiasEstimator`, a difference-class adversary network, a factory helper in `examples/plm/experiment_defs.py`, and package exports so the estimator can be imported and used alongside the existing DML and oracle baselines.
 - Added unit tests covering the new estimator’s fit/predict path, bounded debiasing weights, default `lambda_debias` behavior, and evaluator compatibility; `17` unit tests passed after the change.
+
+## 2026-04-21 20:25:00 EDT
+
+- Changed the paper estimator’s default debiasing penalty to `1 / (sqrt(n) * log_2(n))`, with `n` interpreted as the size of the debiasing split `D1`.
+- Added a reusable trial-seeded factory helper for the paper estimator and updated the PLM visualization code so future experiments can show the minimax-debias beta curve automatically whenever that estimator is included.
+- Expanded the experiment log’s method section to document the paper estimator and its default hyper-parameters for future simulation writeups.

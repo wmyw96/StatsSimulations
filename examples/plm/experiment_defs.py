@@ -663,6 +663,19 @@ def _make_trial_seeded_tracking_factory(method_config: dict):
     return factory
 
 
+def _make_trial_seeded_minimax_factory(method_config: dict):
+    """Return a factory that injects the trial seed into the paper estimator config."""
+    base_config = deepcopy(method_config)
+
+    def factory(*, trial_seed: int | None = None) -> PLMMinimaxDebiasEstimator:
+        config = deepcopy(base_config)
+        if trial_seed is not None:
+            config["seed"] = int(trial_seed)
+        return make_plm_minimax_debias_estimator(config)
+
+    return factory
+
+
 def _format_lambda_label(value: float) -> str:
     """Format a positive regularization value in compact scientific notation."""
     formatted = f"{float(value):.3e}"
