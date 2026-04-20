@@ -265,3 +265,9 @@
 
 - Recorded the next design principle for the PLM stress tests: if we want the fitted residuals `Y - \hat{\mu}(X)` and `T - \hat{\pi}(X)` to be highly correlated, we should make `mu` and `pi` share the same hard-to-learn component with the same sign, not just make `pi` harder in isolation.
 - The suggested template is `mu(x) = a_g g(x) + a_h h(x)` and `pi_k(x) = c_k (b_g g(x) + b_{h,k} h(x))`, where `g` is easy, `h` is rough but positively aligned with `g`, `a_h` is large enough that `\hat{\mu}` still misses `h`, and the scale factor `c_k` is chosen to keep the variance of `pi_k(X)` roughly fixed across `k` so the denominator does not drift.
+
+## 2026-04-21 19:05:00 EDT
+
+- Added Experiment `1.5.12`, a new one-dimensional shared-`g/h` family where both `mu(x)` and `pi(x)` contain the same centered, variance-normalized hard component `h(x)` and each `pi_k` is rescaled so the variance of `pi_k(X)` stays approximately fixed.
+- Extended the PLM evaluator to record two new diagnostics on the oracle test sample: the nuisance-error correlation and the oracle-beta residual correlation, then added exact-id coverage for `1.5.12` in the evaluator tests.
+- Ran the full `30`-trial `1.5.12` experiment and generated `examples/plm/figs/1.5/1.5.12_pi_complexity_mse_comparison.png`; the new family does increase nuisance-error alignment and residual correlation, but it still only produces a mild change in the final DML AIPW beta MSE.

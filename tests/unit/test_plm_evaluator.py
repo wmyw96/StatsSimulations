@@ -383,6 +383,33 @@ class PLMEvaluatorTests(unittest.TestCase):
         self.assertTrue(evaluator_15_11.estimators[0]["accepts_trial_seed"])
         self.assertTrue(evaluator_15_11.estimators[1]["accepts_dgp_config"])
 
+        evaluator_15_12 = build_evaluator_from_exp_id(
+            exp_id="1.5.12",
+            n_trials=1,
+            seed_offset=0,
+            device="cpu",
+        )
+        self.assertEqual(evaluator_15_12.exp_id, "1.5_12")
+        self.assertEqual(evaluator_15_12.result_path.name, "1.5_12.json")
+        self.assertEqual(evaluator_15_12.dgp_param_grid["d"], 1)
+        self.assertEqual(evaluator_15_12.dgp_param_grid["func_mu_name"], "shared_residual_mu")
+        self.assertEqual(
+            evaluator_15_12.dgp_param_grid["func_pi_name"],
+            [
+                "shared_residual_pi_1",
+                "shared_residual_pi_2",
+                "shared_residual_pi_3",
+            ],
+        )
+        self.assertAlmostEqual(evaluator_15_12.dgp_param_grid["sigma_u"], 3.0**0.5)
+        self.assertAlmostEqual(evaluator_15_12.dgp_param_grid["sigma_eps"], 3.0**0.5)
+        self.assertEqual(evaluator_15_12.dgp_param_grid["n"], [1024])
+        self.assertEqual(evaluator_15_12.estimators[0]["method_config"]["d"], 1)
+        self.assertEqual(evaluator_15_12.estimators[0]["method_config"]["lambda_mu"], 2e-5)
+        self.assertEqual(evaluator_15_12.estimators[0]["method_config"]["lambda_pi"], 2e-5)
+        self.assertTrue(evaluator_15_12.estimators[0]["accepts_trial_seed"])
+        self.assertTrue(evaluator_15_12.estimators[1]["accepts_dgp_config"])
+
     def test_run_and_resume_without_duplicate_trials(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             result_root = Path(temp_dir) / "simulation_results"
@@ -436,6 +463,8 @@ class PLMEvaluatorTests(unittest.TestCase):
             self.assertIn("mu_pi_product_mean", first_trial)
             self.assertIn("mu_pi_product_true_mean", first_trial)
             self.assertIn("mu_pi_product_mse", first_trial)
+            self.assertIn("nuisance_error_corr", first_trial)
+            self.assertIn("oracle_residual_corr", first_trial)
 
     def test_resume_updates_n_trials_metadata_and_reuses_new_target(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:

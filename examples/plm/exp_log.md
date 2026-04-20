@@ -1536,3 +1536,70 @@ Main observations:
 Generated figures:
 
 - `examples/plm/figs/1.5/1.5.11_pi_complexity_mse_comparison.png`
+
+## 1.5.12
+
+Experiment `1.5.12`, stored in the simulation artifact `1.5_12`.
+
+### Goal
+
+This experiment tries to make the fitted nuisance residuals align more directly by forcing the outcome regression and the treatment regression to share the same hard-to-learn component with the same sign. The design keeps the one-dimensional unit-variance noise setting from `1.5.11`, but changes the signal structure so that both `mu(x)` and `pi(x)` contain the same rough component `h(x)` and the treatment family increases the weight on `h(x)` while keeping the overall variance of `pi(X)` approximately fixed.
+
+### Setting and design
+
+Specific data-generating setting:
+
+- DGP class: `PartialLinearModelUniformNoiseDGP`
+- Covariate dimension: `d = 1`
+- Easy signal: `g(x) = sin(pi x)`
+- Rough aligned component before normalization: `h_raw(x) = sign(sin(pi x)) * 0.5 * (|sin(8 pi x)| + |sin(16 pi x)|)`
+- Centered and scaled hard component: `h(x) = (h_raw(x) - E[h_raw(X)]) / sd(h_raw(X))`
+- Approximate correlation between `g(x)` and `h(x)` under `X ~ Unif[-1,1]`: `0.845`
+- Outcome regression:
+  - `mu(x) = s_mu^{-1} * (g(x) + 1.0 * h(x))`
+- Treatment regression candidates:
+  - `pi_1(x) = s_0.5^{-1} * (g(x) + 0.5 * h(x))`
+  - `pi_2(x) = s_1.0^{-1} * (g(x) + 1.0 * h(x))`
+  - `pi_3(x) = s_2.0^{-1} * (g(x) + 2.0 * h(x))`
+- Here each scale factor `s_*` is chosen deterministically on a dense `[-1,1]` grid so that the variance of the corresponding signal stays approximately fixed across the family.
+- Trial-level target coefficient: `beta ~ Unif[-0.5, 0.5]`
+- Treatment noise scale: `sigma_u = sqrt(3)` so that `Var(u) = 1`
+- Outcome noise scale: `sigma_eps = sqrt(3)` so that `Var(eps) = 1`
+- Training sample size: `n = 1024`
+- Test sample size: `n_test = 10000`
+- Number of trials: `30`
+
+Method design:
+
+- Compared methods: Neural DML and Oracle AIPW
+- Neural network depth: `L = 3`
+- Neural network width: `N = 512`
+- Outcome-network regularization: `lambda_mu = 2e-5`
+- Treatment-network regularization: `lambda_pi = 2e-5`
+- Optimizer: Adam with profiled closed-form updates for the joint least-squares beta on `D2`
+- Learning rate: `lr = 1e-3`
+- Mini-batch size: `batch_size = 1024`
+- Training epochs: `niter = 200`
+- Device: CPU by default unless explicitly changed in the simulation configuration
+
+### Results
+
+Average metrics over `30` trials:
+
+| pi family | Oracle AIPW beta MSE | DML AIPW beta MSE | Joint LSE beta MSE | DML mu MSE | DML pi MSE | DML nuisance-error corr | DML oracle-residual corr |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| `pi_1` | 0.002082 | 0.004127 | 0.011520 | 0.130356 | 0.079281 | 0.285431 | 0.021949 |
+| `pi_2` | 0.002085 | 0.003940 | 0.004141 | 0.117876 | 0.132520 | 0.323403 | 0.029892 |
+| `pi_3` | 0.002087 | 0.004422 | 0.008486 | 0.133819 | 0.125359 | 0.376466 | 0.036541 |
+
+Main observations:
+
+- The alignment diagnostics do move in the intended direction. The DML nuisance-error correlation increases from `0.285` to `0.323` to `0.376`, and the oracle-beta residual correlation rises from `0.0219` to `0.0299` to `0.0365`.
+- So this family does a better job than `1.5.11` of making the fitted nuisance errors co-move through the shared hard component.
+- The treatment nuisance error also rises substantially relative to `1.5.11`, especially from `pi_1` to `pi_2`, although it is not perfectly monotone in the last step: `0.079281 -> 0.132520 -> 0.125359`.
+- The final DML beta MSE remains fairly flat overall (`0.004127, 0.003940, 0.004422`) rather than showing a strong monotone degradation. The joint LSE beta estimate is also unstable rather than cleanly ordered across the family.
+- The practical takeaway is that explicitly sharing the hard component between `mu` and `pi` does increase nuisance-error alignment, but with unit-variance noise it still only translates into a modest change in the final DML beta accuracy.
+
+Generated figures:
+
+- `examples/plm/figs/1.5/1.5.12_pi_complexity_mse_comparison.png`

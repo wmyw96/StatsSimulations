@@ -124,6 +124,8 @@ class PLMEvaluator(Evaluator):
                         "beta_init_mse": 0.0,
                         "mu_mse": 0.0,
                         "pi_mse": 0.0,
+                        "nuisance_error_corr": 0.0,
+                        "oracle_residual_corr": 0.0,
                         "num_trials": 0,
                     },
                 )
@@ -131,6 +133,8 @@ class PLMEvaluator(Evaluator):
                 method_summary["beta_init_mse"] += float(estimator_record["beta_init_sq_error"])
                 method_summary["mu_mse"] += float(estimator_record["mu_mse"])
                 method_summary["pi_mse"] += float(estimator_record["pi_mse"])
+                method_summary["nuisance_error_corr"] += float(estimator_record["nuisance_error_corr"])
+                method_summary["oracle_residual_corr"] += float(estimator_record["oracle_residual_corr"])
                 method_summary["num_trials"] += 1
 
         for method_summary in summary.values():
@@ -141,6 +145,8 @@ class PLMEvaluator(Evaluator):
             method_summary["beta_init_mse"] /= num_trials
             method_summary["mu_mse"] /= num_trials
             method_summary["pi_mse"] /= num_trials
+            method_summary["nuisance_error_corr"] /= num_trials
+            method_summary["oracle_residual_corr"] /= num_trials
 
         return summary
 
@@ -270,6 +276,8 @@ class PLMEvaluator(Evaluator):
         pi_pred = _as_column(predictions["pi"], label="pi prediction")
         mu_true = _as_column(data_test.oracle["mu_x"], label="oracle mu_x")
         pi_true = _as_column(data_test.oracle["pi_x"], label="oracle pi_x")
+        y_test = _as_column(data_test.observed["y"], label="observed y")
+        t_test = _as_column(data_test.observed["t"], label="observed t")
         beta_hat = float(fit_result.estimate)
         beta_sq_error = float((beta_hat - beta_true) ** 2)
 
@@ -279,6 +287,11 @@ class PLMEvaluator(Evaluator):
             diagnostics = getattr(fit_result, "diagnostics", {})
             beta_initial = float(diagnostics.get("beta_joint", beta_hat))
         diagnostics = getattr(fit_result, "diagnostics", {})
+
+        mu_error = mu_true - mu_pred
+        pi_error = pi_true - pi_pred
+        oracle_residual_y = y_test - beta_true * t_test - mu_pred
+        oracle_residual_t = t_test - pi_pred
 
         result_record = {
             "estimator_name": estimator_spec["name"],
@@ -291,6 +304,8 @@ class PLMEvaluator(Evaluator):
             "beta_init_sq_error": float((beta_initial - beta_true) ** 2),
             "mu_mse": float(np.mean((mu_pred - mu_true) ** 2)),
             "pi_mse": float(np.mean((pi_pred - pi_true) ** 2)),
+            "nuisance_error_corr": _safe_corr(mu_error, pi_error),
+            "oracle_residual_corr": _safe_corr(oracle_residual_y, oracle_residual_t),
             "mu_pi_product_mean": float(np.mean(mu_pred * pi_pred)),
             "mu_pi_product_true_mean": float(np.mean(mu_true * pi_true)),
             "mu_pi_product_mse": float(np.mean((mu_pred * pi_pred - mu_true * pi_true) ** 2)),
@@ -505,3 +520,16 @@ def _as_column(values: np.ndarray, label: str) -> np.ndarray:
     if array.ndim == 2 and array.shape[1] == 1:
         return array
     raise ValueError(f"{label} must have shape (n,) or (n, 1).")
+
+
+def _safe_corr(left: np.ndarray, right: np.ndarray) -> float:
+    """Compute a correlation safely for column vectors."""
+    left_array = np.asarray(left, dtype=float).reshape(-1)
+    right_array = np.asarray(right, dtype=float).reshape(-1)
+    if left_array.size != right_array.size:
+        raise ValueError("Correlation inputs must have the same number of entries.")
+    left_std = float(np.std(left_array))
+    right_std = float(np.std(right_array))
+    if left_std <= 1e-12 or right_std <= 1e-12:
+        return 0.0
+    return float(np.corrcoef(left_array, right_array)[0, 1])
