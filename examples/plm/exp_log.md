@@ -1224,3 +1224,65 @@ Main observations:
 Generated figures:
 
 - `examples/plm/figs/1.5/1.5.6_pi_complexity_mse_comparison.png`
+
+## 1.5.7
+
+Experiment `1.5.7`, stored in the simulation artifact `1.5_7`.
+
+### Goal
+
+This experiment tries to isolate treatment-regression difficulty more cleanly than `1.5.6`. The design keeps the outcome regression easy, depending only on `x_1`, while the treatment regression depends on `x_2`, `x_3`, and `x_4` through increasingly rough structures. The intention is to make `pi(x)` harder without simultaneously making the true `mu(x)` more complicated.
+
+### Setting and design
+
+Specific data-generating setting:
+
+- DGP class: `PartialLinearModelUniformNoiseDGP`
+- Covariate dimension: `d = 4`
+- Outcome regression: `mu(x) = sin(2 pi x_1)`
+- Treatment regression candidates:
+  - `pi_1(x) = 0.98 * sin(2 pi x_1) + sqrt(1 - 0.98^2) * (sin(2 pi x_2) + sin(2 pi x_3) + sin(2 pi x_4)) / sqrt(3)`
+  - `pi_2(x) = 0.98 * sin(2 pi x_1) + sqrt(1 - 0.98^2) * (sin(8 pi x_2) + sin(8 pi x_3) + sin(8 pi x_4)) / sqrt(3)`
+  - `pi_3(x) = 0.98 * sin(2 pi x_1) + sqrt(1 - 0.98^2) * sign(prod_{j=2}^4 sin(8 pi x_j))`
+  - `pi_4(x) = 0.98 * sin(2 pi x_1) + sqrt(1 - 0.98^2) * sign(prod_{j=2}^4 sin(32 pi x_j))`
+- Trial-level target coefficient: `beta ~ Unif[-0.5, 0.5]`
+- Treatment noise scale: `sigma_u = 0.5`
+- Outcome noise scale: `sigma_eps = 0.5`
+- Training sample size: `n = 1024`
+- Test sample size: `n_test = 10000`
+- Number of trials: `30`
+
+Method design:
+
+- Compared methods: Neural DML and Oracle AIPW
+- Neural network depth: `L = 3`
+- Neural network width: `N = 512`
+- Outcome-network regularization: `lambda_mu = 2e-5`
+- Treatment-network regularization: `lambda_pi = 2e-5`
+- Optimizer: Adam with profiled closed-form updates for the joint least-squares beta on `D2`
+- Learning rate: `lr = 1e-3`
+- Mini-batch size: `batch_size = 1024`
+- Training epochs: `niter = 200`
+- Device: CPU by default unless explicitly changed in the simulation configuration
+
+### Results
+
+Average MSE over `30` trials:
+
+| pi family | Oracle AIPW beta MSE | DML AIPW beta MSE | Joint LSE beta MSE | DML mu MSE | DML pi MSE |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| `pi_1` | 0.002712 | 0.113622 | 0.452936 | 0.384989 | 0.134818 |
+| `pi_2` | 0.002747 | 0.081255 | 0.413697 | 0.372124 | 0.157720 |
+| `pi_3` | 0.002783 | 0.062631 | 0.340507 | 0.344817 | 0.200159 |
+| `pi_4` | 0.002674 | 0.057620 | 0.362190 | 0.358094 | 0.192388 |
+
+Main observations:
+
+- The treatment nuisance does get harder in a much cleaner way than before. The DML `pi` MSE rises from `0.134818` to `0.157720` to `0.200159`, then stays at a similarly large level for the roughest case.
+- However, this experiment still does not isolate `pi` difficulty as cleanly as intended, because the DML `mu` MSE remains very large throughout, even though the true `mu(x)` only depends on `x_1`. So the four-dimensional learning problem itself is still making the outcome nuisance difficult for the neural estimator.
+- Both beta estimators remain very poor compared with the oracle benchmark, but they again do not degrade monotonically with the treatment-regression difficulty. In fact, the DML beta MSE decreases across the family, and the joint LSE beta MSE also improves from `pi_1` to `pi_3` before bouncing slightly at `pi_4`.
+- So `1.5.7` improves on `1.5.6` in one sense: it makes `pi` harder while keeping the true `mu` structurally simple. But empirically, the fitted `mu` is still hard, which means this design still does not produce a clean one-factor stress test for the role of treatment-regression error in the beta estimator.
+
+Generated figures:
+
+- `examples/plm/figs/1.5/1.5.7_pi_complexity_mse_comparison.png`

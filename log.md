@@ -215,3 +215,9 @@
 - Added Experiment `1.5.6`, which moves the nuisance structure to `d = 4` with `mu(x) = 0.5 * sum_{j=1}^4 sin(2 pi x_j)` and a three-level fixed-overlap `pi` family ranging from smooth low-frequency to discontinuous high-frequency.
 - Extended the function registry and exact-id evaluator tests for the new four-dimensional family, then ran `1.5.6` with `30` trials and generated `examples/plm/figs/1.5/1.5.6_pi_complexity_mse_comparison.png`.
 - Documented that the `d = 4` setup makes the nuisance fits and both beta estimators dramatically harder overall, even though the beta errors still do not degrade monotonically with the standalone treatment-regression MSE.
+
+## 2026-04-20 20:25:00 EDT
+
+- Added Experiment `1.5.7`, which keeps `mu(x) = sin(2 pi x_1)` structurally simple in `d = 4` while making `pi(x)` depend on `x_2`, `x_3`, and `x_4` through progressively rougher smooth and discontinuous components.
+- Extended the function registry, exact-id evaluator tests, and figure labels for the new isolated-`pi` family, then ran `1.5.7` with `30` trials and generated `examples/plm/figs/1.5/1.5.7_pi_complexity_mse_comparison.png`.
+- Documented that `1.5.7` does make the treatment nuisance harder in a cleaner way, but the fitted `mu` error remains large in `d = 4`, so the experiment still does not cleanly isolate the effect of treatment-regression difficulty on beta estimation.
