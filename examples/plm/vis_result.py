@@ -112,17 +112,17 @@ def main() -> None:
     if family_display_id == "1.4":
         grouped_records = _collect_tracking_records_by_lambda(results)
         if len(grouped_records) > 1:
+            if display_exp_id == "1.4.4":
+                _plot_family_14_dual_source_validation_sweep(
+                    display_exp_id=display_exp_id,
+                    fig_dir=fig_dir,
+                    grouped_records=grouped_records,
+                )
+                return
             _plot_family_14_lambda_sweep(
                 display_exp_id=display_exp_id,
                 fig_dir=fig_dir,
                 grouped_records=grouped_records,
-            )
-            return
-        if display_exp_id == "1.4.4":
-            _plot_family_14_validation_paths(
-                display_exp_id=display_exp_id,
-                fig_dir=fig_dir,
-                results=results,
             )
             return
         _plot_family_14_nuisance_paths(
@@ -431,7 +431,10 @@ def _collect_tracking_records_by_lambda(
     labels: dict[float, str] = {}
     for trial in results["trial_results"]:
         for record in trial["estimator_results"]:
-            if "mu_mse_path" not in record or "pi_mse_path" not in record:
+            if (
+                ("mu_mse_path" not in record or "pi_mse_path" not in record)
+                and "tracking_paths" not in record
+            ):
                 continue
             method_config = record.get("method_config", {})
             lambda_value = float(method_config.get("lambda_mu"))
@@ -442,6 +445,65 @@ def _collect_tracking_records_by_lambda(
         (lambda_value, labels[lambda_value], grouped[lambda_value])
         for lambda_value in sorted(grouped)
     ]
+
+
+def _plot_family_14_dual_source_validation_sweep(
+    display_exp_id: str,
+    fig_dir: Path,
+    grouped_records: list[tuple[float, str, list[dict[str, object]]]],
+) -> None:
+    import matplotlib.pyplot as plt
+    from matplotlib.lines import Line2D
+
+    if not grouped_records:
+        raise SystemExit(f"No tracking records were found in the results for {display_exp_id}.")
+
+    source_specs = [
+        ("D2", "d2"),
+        ("validation", "validation"),
+    ]
+    for source_label, filename_stem in source_specs:
+        fig, axis = plt.subplots(figsize=(8.8, 5.3))
+        lambda_handles = []
+        positive_values = []
+        for idx, (_, lambda_label, records) in enumerate(grouped_records):
+            color = LAMBDA_SWEEP_COLORS[idx % len(LAMBDA_SWEEP_COLORS)]
+            tracking_paths = [
+                record.get("tracking_paths", {}).get(source_label)
+                for record in records
+                if source_label in record.get("tracking_paths", {})
+            ]
+            if not tracking_paths:
+                continue
+            epoch_grid = records[0]["epoch_grid"]
+            mu_paths = np.asarray([path["mu_mse_path"] for path in tracking_paths], dtype=float)
+            pi_paths = np.asarray([path["pi_mse_path"] for path in tracking_paths], dtype=float)
+            mu_mean = mu_paths.mean(axis=0)
+            pi_mean = pi_paths.mean(axis=0)
+            positive_values.extend(value for value in mu_mean if value > 0.0)
+            positive_values.extend(value for value in pi_mean if value > 0.0)
+            axis.plot(epoch_grid, mu_mean, color=color, linewidth=2.0)
+            axis.plot(epoch_grid, pi_mean, color=color, linewidth=2.0, linestyle="--")
+            lambda_handles.append(Line2D([0], [0], color=color, linewidth=2.4, label=rf"$\lambda={lambda_label}$"))
+
+        axis.set_xlabel("Epoch")
+        axis.set_ylabel(f"Average oracle nuisance MSE on {source_label}")
+        axis.set_yscale("log")
+        if positive_values:
+            axis.set_ylim(max(min(positive_values) * 0.8, 1e-8), max(positive_values) * 1.1)
+        axis.set_title(f"{display_exp_id}: average nuisance-learning paths on {source_label}")
+        lambda_legend = axis.legend(handles=lambda_handles, loc="upper right", title=r"$\lambda$")
+        axis.add_artist(lambda_legend)
+        style_handles = [
+            Line2D([0], [0], color="black", linewidth=2.0, linestyle="-", label="mu average"),
+            Line2D([0], [0], color="black", linewidth=2.0, linestyle="--", label="pi average"),
+        ]
+        axis.legend(handles=style_handles, loc="lower left", frameon=False)
+        fig.tight_layout()
+        output_path = fig_dir / f"{display_exp_id}_{filename_stem}_average_paths.png"
+        fig.savefig(output_path, dpi=220)
+        plt.close(fig)
+        print(f"Saved {output_path}")
 
 
 def _plot_family_14_lambda_sweep(

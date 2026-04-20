@@ -160,3 +160,9 @@
 - Extended oracle nuisance tracking so tracked estimators can evaluate epoch-by-epoch nuisance MSE on an independent validation sample instead of only on `D2`.
 - Added exact experiment id `1.4.4` for validation-based nuisance tracking with `n = n_val = 1024` and the baseline `lambda_mu = lambda_pi = 1e-4`.
 - Generated separate validation-path figures for `mu` and `pi`, ran `1.4.4` with `10` trials, and documented the validation-based checkpoint summary in `examples/plm/exp_log.md`.
+
+## 2026-04-20 11:35:00 EDT
+
+- Reworked `1.4.4` into a seven-value lambda sweep that tracks oracle nuisance MSE on both `D2` and an independent validation sample under the same fitted networks.
+- Generalized the tracking diagnostics so one fit can persist multiple tracked sources at once, and updated the visualizer to emit separate averaged figures for `D2` and validation.
+- Reran `1.4.4` with `10` trials, generated `examples/plm/figs/1.4/1.4.4_d2_average_paths.png` and `examples/plm/figs/1.4/1.4.4_validation_average_paths.png`, and rewrote the `1.4.4` section of `examples/plm/exp_log.md`.

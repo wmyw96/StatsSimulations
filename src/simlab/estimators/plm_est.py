@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from copy import deepcopy
+from typing import Any
 
 import numpy as np
 import torch
@@ -133,9 +134,9 @@ class PLMDMLEstimator(Estimator):
         x2_tensor = torch.as_tensor(d2_x, dtype=torch.float32, device=self.device)
         t2_tensor = torch.as_tensor(d2_t, dtype=torch.float32, device=self.device)
         y2_tensor = torch.as_tensor(d2_y, dtype=torch.float32, device=self.device)
-        oracle_tracking = None
+        oracle_tracking_states = None
         if record_oracle_paths:
-            oracle_tracking = _build_oracle_tracking_state(
+            oracle_tracking_states = _build_oracle_tracking_states(
                 data=data,
                 n_total=len(x),
                 device=self.device,
@@ -159,23 +160,29 @@ class PLMDMLEstimator(Estimator):
         full_joint_loss = float("nan")
         full_pi_loss = float("nan")
         epoch_grid: list[int] = []
-        mu_mse_path: list[float] = []
-        pi_mse_path: list[float] = []
+        tracking_paths: dict[str, dict[str, Any]] = {}
 
-        if oracle_tracking is not None:
+        if oracle_tracking_states is not None:
+            for split_label, tracking_state in oracle_tracking_states.items():
+                tracking_paths[split_label] = {
+                    "mu_mse_path": [],
+                    "pi_mse_path": [],
+                    "tracking_n": int(tracking_state["x"].shape[0]),
+                }
             self.est_mu.eval()
             self.est_pi.eval()
             with torch.no_grad():
-                initial_mu_mse, initial_pi_mse = _compute_oracle_tracking_mse(
-                    est_mu=self.est_mu,
-                    est_pi=self.est_pi,
-                    tracking_x=oracle_tracking["x"],
-                    tracking_mu=oracle_tracking["mu"],
-                    tracking_pi=oracle_tracking["pi"],
-                )
+                for split_label, tracking_state in oracle_tracking_states.items():
+                    initial_mu_mse, initial_pi_mse = _compute_oracle_tracking_mse(
+                        est_mu=self.est_mu,
+                        est_pi=self.est_pi,
+                        tracking_x=tracking_state["x"],
+                        tracking_mu=tracking_state["mu"],
+                        tracking_pi=tracking_state["pi"],
+                    )
+                    tracking_paths[split_label]["mu_mse_path"].append(initial_mu_mse)
+                    tracking_paths[split_label]["pi_mse_path"].append(initial_pi_mse)
             epoch_grid.append(0)
-            mu_mse_path.append(initial_mu_mse)
-            pi_mse_path.append(initial_pi_mse)
 
         self.est_mu.train()
         self.est_pi.train()
@@ -210,17 +217,18 @@ class PLMDMLEstimator(Estimator):
                 self.beta.data.fill_(profiled_beta)
                 full_joint_loss = float(torch.mean((self.beta * t2_tensor + mu_d2 - y2_tensor) ** 2).cpu().item())
                 full_pi_loss = float(torch.mean((t2_tensor - pi_d2) ** 2).cpu().item())
-                if oracle_tracking is not None:
-                    tracked_mu_mse, tracked_pi_mse = _compute_oracle_tracking_mse(
-                        est_mu=self.est_mu,
-                        est_pi=self.est_pi,
-                        tracking_x=oracle_tracking["x"],
-                        tracking_mu=oracle_tracking["mu"],
-                        tracking_pi=oracle_tracking["pi"],
-                    )
+                if oracle_tracking_states is not None:
                     epoch_grid.append(epoch + 1)
-                    mu_mse_path.append(tracked_mu_mse)
-                    pi_mse_path.append(tracked_pi_mse)
+                    for split_label, tracking_state in oracle_tracking_states.items():
+                        tracked_mu_mse, tracked_pi_mse = _compute_oracle_tracking_mse(
+                            est_mu=self.est_mu,
+                            est_pi=self.est_pi,
+                            tracking_x=tracking_state["x"],
+                            tracking_mu=tracking_state["mu"],
+                            tracking_pi=tracking_state["pi"],
+                        )
+                        tracking_paths[split_label]["mu_mse_path"].append(tracked_mu_mse)
+                        tracking_paths[split_label]["pi_mse_path"].append(tracked_pi_mse)
             self.est_mu.train()
             self.est_pi.train()
 
@@ -240,16 +248,20 @@ class PLMDMLEstimator(Estimator):
             "n_d2": len(d2_x),
             "device": str(self.device),
         }
-        if oracle_tracking is not None:
-            diagnostics.update(
-                {
-                    "epoch_grid": epoch_grid,
-                    "mu_mse_path": mu_mse_path,
-                    "pi_mse_path": pi_mse_path,
-                    "tracking_split": oracle_tracking["split_label"],
-                    "tracking_n": int(oracle_tracking["x"].shape[0]),
-                }
-            )
+        if oracle_tracking_states is not None:
+            diagnostics["epoch_grid"] = epoch_grid
+            if len(tracking_paths) == 1:
+                split_label, path_record = next(iter(tracking_paths.items()))
+                diagnostics.update(
+                    {
+                        "mu_mse_path": path_record["mu_mse_path"],
+                        "pi_mse_path": path_record["pi_mse_path"],
+                        "tracking_split": split_label,
+                        "tracking_n": path_record["tracking_n"],
+                    }
+                )
+            else:
+                diagnostics["tracking_paths"] = tracking_paths
         self.est_params = EstimateResult(
             target="beta",
             estimate=beta_hat,
@@ -368,12 +380,26 @@ def _profile_beta_from_tensors(t: torch.Tensor, y: torch.Tensor, mu: torch.Tenso
     return float((numerator / denominator).detach().cpu().item())
 
 
-def _build_oracle_tracking_state(
+def _build_oracle_tracking_states(
     data: SampledData,
     n_total: int,
     device: torch.device,
-) -> dict[str, torch.Tensor]:
-    """Build tensors for oracle nuisance tracking on the fitted split."""
+) -> dict[str, dict[str, torch.Tensor]]:
+    """Build tensors for oracle nuisance tracking on D2 and optional validation data."""
+    tracking_states: dict[str, dict[str, torch.Tensor]] = {}
+    if "mu_x" not in data.oracle or "pi_x" not in data.oracle:
+        raise KeyError(
+            "Oracle nuisance tracking requires oracle keys 'mu_x' and 'pi_x' in the sampled data."
+        )
+    split = n_total // 2
+    tracking_x = _validate_feature_matrix(data.observed["x"][split:])
+    tracking_mu = _as_float_column(data.oracle["mu_x"], n_total, label="oracle mu_x")[split:]
+    tracking_pi = _as_float_column(data.oracle["pi_x"], n_total, label="oracle pi_x")[split:]
+    tracking_states["D2"] = {
+        "x": torch.as_tensor(tracking_x, dtype=torch.float32, device=device),
+        "mu": torch.as_tensor(tracking_mu, dtype=torch.float32, device=device),
+        "pi": torch.as_tensor(tracking_pi, dtype=torch.float32, device=device),
+    }
     validation_keys = {"validation_x", "validation_mu_x", "validation_pi_x"}
     if validation_keys.issubset(data.oracle):
         tracking_x = _validate_feature_matrix(data.oracle["validation_x"])
@@ -387,23 +413,12 @@ def _build_oracle_tracking_state(
             len(tracking_x),
             label="validation oracle pi_x",
         )
-        split_label = "validation"
-    else:
-        if "mu_x" not in data.oracle or "pi_x" not in data.oracle:
-            raise KeyError(
-                "Oracle nuisance tracking requires oracle keys 'mu_x' and 'pi_x' in the sampled data."
-            )
-        split = n_total // 2
-        tracking_x = _validate_feature_matrix(data.observed["x"][split:])
-        tracking_mu = _as_float_column(data.oracle["mu_x"], n_total, label="oracle mu_x")[split:]
-        tracking_pi = _as_float_column(data.oracle["pi_x"], n_total, label="oracle pi_x")[split:]
-        split_label = "D2"
-    return {
-        "x": torch.as_tensor(tracking_x, dtype=torch.float32, device=device),
-        "mu": torch.as_tensor(tracking_mu, dtype=torch.float32, device=device),
-        "pi": torch.as_tensor(tracking_pi, dtype=torch.float32, device=device),
-        "split_label": split_label,
-    }
+        tracking_states["validation"] = {
+            "x": torch.as_tensor(tracking_x, dtype=torch.float32, device=device),
+            "mu": torch.as_tensor(tracking_mu, dtype=torch.float32, device=device),
+            "pi": torch.as_tensor(tracking_pi, dtype=torch.float32, device=device),
+        }
+    return tracking_states
 
 
 def _compute_oracle_tracking_mse(

@@ -373,10 +373,10 @@ def build_experiment_1_4_4(
     device: str = "cpu",
     result_root: str | Path = DEFAULT_RESULT_ROOT,
 ) -> PLMEvaluator:
-    """Build validation-based nuisance-path tracking for the baseline lambda."""
+    """Build dual-source nuisance-path tracking for the wide lambda sweep."""
     return build_tracking_experiment(
         exp_id=exp_id,
-        lambda_values=[1e-4],
+        lambda_values=[(5.0**power) * 1e-4 for power in (-3, -2, -1, 0, 1, 2, 3)],
         n_trials=n_trials,
         seed_offset=seed_offset,
         device=device,

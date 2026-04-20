@@ -754,7 +754,7 @@ Experiment `1.4.4`, stored in the simulation artifact `1.4_4`.
 
 ### Goal
 
-This experiment revisits the optimization-path question from `1.4.1`, but now tracks oracle nuisance MSE on an independent validation sample rather than on the fitted split `D2`. The goal is to check whether the earlier picture was mostly an in-sample phenomenon and to assess whether `200` epochs still looks reasonable once the nuisance learners are evaluated out of sample.
+This experiment revisits the lambda-sweep question from `1.4.3`, but now records the nuisance-learning paths on both the fitted split `D2` and on an independent validation sample. The goal is to separate the in-sample optimization picture from the out-of-sample one and see whether the preferred lambda values change once the nuisance learners are judged on fresh data.
 
 ### Setting and design
 
@@ -774,11 +774,11 @@ Specific data-generating setting:
 
 Method design:
 
-- Compared method: `PLMDMLOracleTrackingEstimator`
+- Compared method family: `PLMDMLOracleTrackingEstimator`
 - Neural network depth: `L = 3`
 - Neural network width: `N = 512`
-- Outcome-network regularization: `lambda_mu = 1e-4`
-- Treatment-network regularization: `lambda_pi = 1e-4`
+- Wide regularization sweep: `lambda_mu = lambda_pi = 5^l * 1e-4` for `l in {-3, -2, -1, 0, 1, 2, 3}`
+- Concrete lambda values: `{8e-7, 4e-6, 2e-5, 1e-4, 5e-4, 2.5e-3, 1.25e-2}`
 - Optimizer: Adam with profiled closed-form updates for the joint least-squares beta on `D2`
 - Learning rate: `lr = 1e-3`
 - Mini-batch size: `batch_size = 1024`
@@ -787,39 +787,34 @@ Method design:
 
 Tracking design:
 
-- The nuisance networks are still fitted on `D2`.
-- After every epoch, the estimator evaluates `mu_hat` and `pi_hat` on an independent oracle validation sample of size `1024`.
-- The visualization reports the validation `mu` and `pi` MSE in two separate figures, one per nuisance target.
+- The nuisance networks are fitted on `D2`.
+- After every epoch, the estimator evaluates `mu_hat` and `pi_hat` both on `D2` itself and on an independent oracle validation sample of size `1024`.
+- The visualization reports two averaged path figures: one for oracle nuisance MSE on `D2` and one for oracle nuisance MSE on the validation sample.
 
 ### Results
 
-The validation-based picture is qualitatively similar to `1.4.1`, but it is now an out-of-sample diagnostic rather than a fit-split diagnostic. Both nuisance learners improve sharply through about epoch `100`, and then the average validation error flattens with mild late-epoch wobble.
+This experiment compares the wide lambda sweep side by side on `D2` and on validation. In this run, the two views are much closer than one might fear: the validation curves do not overturn the main ranking from `D2`, although they do make the tradeoff between `8e-7` and `1e-4` a bit clearer.
 
-Average validation nuisance MSE along the training path:
+Final average nuisance MSE at epoch `200`:
 
-| Epoch | Mu validation MSE | Pi validation MSE |
-| --- | ---: | ---: |
-| 0 | 0.583692 | 0.618118 |
-| 50 | 0.105227 | 0.057163 |
-| 100 | 0.016840 | 0.007766 |
-| 150 | 0.010468 | 0.008029 |
-| 200 | 0.012213 | 0.009210 |
-
-Additional validation-path summary:
-
-- For `mu`, the average epoch of the minimum path value is `157.7`, with median `158.0`.
-- For `pi`, the average epoch of the minimum path value is `124.2`, with median `117.0`.
-- In `3` out of `10` trials, the `mu` minimum is reached by epoch `150`.
-- In `8` out of `10` trials, the `pi` minimum is reached by epoch `150`.
-- On average, the final epoch is slightly worse than the best validation epoch by about `0.00528` for `mu` and `0.00209` for `pi`.
+| lambda | D2 mu | D2 pi | Validation mu | Validation pi |
+| --- | ---: | ---: | ---: | ---: |
+| 8e-7 | 0.011243 | 0.005696 | 0.012591 | 0.005480 |
+| 4e-6 | 0.018524 | 0.006505 | 0.017296 | 0.006351 |
+| 2e-5 | 0.019397 | 0.010953 | 0.019184 | 0.012106 |
+| 1e-4 | 0.012636 | 0.009490 | 0.012213 | 0.009210 |
+| 5e-4 | 0.015937 | 0.014450 | 0.015928 | 0.014070 |
+| 2.5e-3 | 0.033103 | 0.028254 | 0.032252 | 0.028417 |
+| 1.25e-2 | 0.104797 | 0.061855 | 0.106776 | 0.061313 |
 
 Interpretation:
 
-- The main optimization story survives the move to validation tracking: the nuisance learners make most of their progress well before epoch `200`.
-- The `pi` network usually stabilizes earlier than the `mu` network.
-- Epoch `200` does not look too short, but it also does not look optimal as a validation-tuned stopping point. A checkpoint somewhere around the `120` to `170` range would likely be competitive, especially for `pi`.
+- The largest penalties `2.5e-3` and `1.25e-2` still clearly underfit on both `D2` and validation, so the earlier underfitting conclusion was not an artifact of the tracking split.
+- The low-penalty end remains strongest, but the winner now depends on which nuisance target we emphasize: `8e-7` gives the best final validation `pi` error, while `1e-4` gives the best final validation `mu` error.
+- The `D2` and validation rankings are broadly aligned. That means the earlier `D2`-only tracking was optimistic in the usual sense, but it was not qualitatively misleading for this design.
+- As a practical default, `1e-4` still looks like the most balanced choice. If we specifically care about pushing the treatment nuisance as low as possible, then `8e-7` is a serious alternative worth revisiting.
 
 Generated figures:
 
-- `examples/plm/figs/1.4/1.4.4_mu_validation_paths.png`
-- `examples/plm/figs/1.4/1.4.4_pi_validation_paths.png`
+- `examples/plm/figs/1.4/1.4.4_d2_average_paths.png`
+- `examples/plm/figs/1.4/1.4.4_validation_average_paths.png`

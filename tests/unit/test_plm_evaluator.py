@@ -105,9 +105,14 @@ class PLMEvaluatorTests(unittest.TestCase):
         )
         self.assertEqual(evaluator_14_4.exp_id, "1.4_4")
         self.assertEqual(evaluator_14_4.result_path.name, "1.4_4.json")
-        self.assertEqual(len(evaluator_14_4.estimators), 1)
+        self.assertEqual(len(evaluator_14_4.estimators), 7)
         self.assertEqual(evaluator_14_4.estimators[0]["method_config"]["tracking_source"], "validation")
         self.assertEqual(evaluator_14_4.estimators[0]["method_config"]["validation_n"], 1024)
+        lambda_values = [spec["method_config"]["lambda_mu"] for spec in evaluator_14_4.estimators]
+        expected_lambda_values = [8e-07, 4e-06, 2e-05, 1e-04, 5e-04, 2.5e-03, 1.25e-02]
+        self.assertEqual(len(lambda_values), len(expected_lambda_values))
+        for observed, expected in zip(lambda_values, expected_lambda_values):
+            self.assertAlmostEqual(observed, expected)
 
     def test_run_and_resume_without_duplicate_trials(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -340,6 +345,7 @@ class PLMEvaluatorTests(unittest.TestCase):
                 device="cpu",
                 result_root=result_root,
             )
+            evaluator.estimators = [evaluator.estimators[0]]
             evaluator.dgp_param_grid["n"] = [16]
             evaluator.dgp_param_grid["n_test"] = 32
             tracking_config = dict(evaluator.estimators[0]["method_config"])
@@ -358,8 +364,9 @@ class PLMEvaluatorTests(unittest.TestCase):
             results = evaluator.run()
             estimator_record = results["trial_results"][0]["estimator_results"][0]
 
-            self.assertEqual(estimator_record["tracking_split"], "validation")
-            self.assertEqual(estimator_record["tracking_n"], 16)
+            self.assertIn("tracking_paths", estimator_record)
+            self.assertEqual(estimator_record["tracking_paths"]["D2"]["tracking_n"], 8)
+            self.assertEqual(estimator_record["tracking_paths"]["validation"]["tracking_n"], 16)
 
 
 if __name__ == "__main__":

@@ -223,8 +223,11 @@ class PLMEstimatorTests(unittest.TestCase):
 
         result = estimator.fit(fit_sample)
 
-        self.assertEqual(result.diagnostics["tracking_split"], "validation")
-        self.assertEqual(result.diagnostics["tracking_n"], 8)
+        self.assertIn("tracking_paths", result.diagnostics)
+        self.assertIn("D2", result.diagnostics["tracking_paths"])
+        self.assertIn("validation", result.diagnostics["tracking_paths"])
+        self.assertEqual(result.diagnostics["tracking_paths"]["D2"]["tracking_n"], 6)
+        self.assertEqual(result.diagnostics["tracking_paths"]["validation"]["tracking_n"], 8)
 
 
 if __name__ == "__main__":

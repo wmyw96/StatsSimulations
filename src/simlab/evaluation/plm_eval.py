@@ -292,7 +292,7 @@ class PLMEvaluator(Evaluator):
             "mu_pi_product_mse": float(np.mean((mu_pred * pi_pred - mu_true * pi_true) ** 2)),
             "runtime_sec": runtime_sec,
         }
-        for key in ("epoch_grid", "mu_mse_path", "pi_mse_path", "tracking_split", "tracking_n"):
+        for key in ("epoch_grid", "mu_mse_path", "pi_mse_path", "tracking_split", "tracking_n", "tracking_paths"):
             if key in diagnostics:
                 result_record[key] = deepcopy(diagnostics[key])
         return result_record
