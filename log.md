@@ -260,3 +260,8 @@
 - Added Experiment `1.5.11`, a new one-dimensional unit-variance stress test with `g_1(x) = sin(pi x)`, a rough correlated component `g_2(x) = sign(sin(pi x)) * 0.5 * (|sin(8 pi x)| + |sin(16 pi x)|)`, and `sigma_u = sigma_eps = sqrt(3)` so both noises have variance one.
 - Extended the function registry, exact-id evaluator tests, and experiment builder mapping for `1.5.11`, then ran the full `30`-trial experiment and generated `examples/plm/figs/1.5/1.5.11_pi_complexity_mse_comparison.png`.
 - Documented that the new design finally keeps the DML beta MSE stable and close to oracle while `pi` clearly gets harder, but it still does not produce a strong monotone deterioration in the final DML AIPW beta estimator; the joint least-squares beta is the quantity that degrades more noticeably.
+
+## 2026-04-21 17:25:00 EDT
+
+- Recorded the next design principle for the PLM stress tests: if we want the fitted residuals `Y - \hat{\mu}(X)` and `T - \hat{\pi}(X)` to be highly correlated, we should make `mu` and `pi` share the same hard-to-learn component with the same sign, not just make `pi` harder in isolation.
+- The suggested template is `mu(x) = a_g g(x) + a_h h(x)` and `pi_k(x) = c_k (b_g g(x) + b_{h,k} h(x))`, where `g` is easy, `h` is rough but positively aligned with `g`, `a_h` is large enough that `\hat{\mu}` still misses `h`, and the scale factor `c_k` is chosen to keep the variance of `pi_k(X)` roughly fixed across `k` so the denominator does not drift.
