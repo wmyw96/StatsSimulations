@@ -148,3 +148,9 @@
 - Added Experiment `1.4.2`, a six-value lambda sweep for the oracle-tracked nuisance-learning study with `lambda_mu = lambda_pi in {2e-5, 5e-5, 1e-4, 2e-4, 4e-4, 8e-4}`.
 - Extended the PLM visualizer with two `1.4.2` outputs: a six-panel raw trajectory figure with shared log-scaled y-limits and an amortized average-path figure colored by lambda and styled by nuisance target.
 - Ran `1.4.2` with `20` trials, generated both `examples/plm/figs/1.4/1.4.2_lambda_path_panels.png` and `examples/plm/figs/1.4/1.4.2_lambda_average_paths.png`, and documented the lambda-sweep summary in `examples/plm/exp_log.md`.
+
+## 2026-04-20 01:45:00 EDT
+
+- Added Experiment `1.4.3`, a wider seven-value lambda sweep with `lambda_mu = lambda_pi = 5^l * 1e-4` for `l in {-3, -2, -1, 0, 1, 2, 3}`.
+- Generalized the `1.4` plotting code so lambda-sweep experiments can render an arbitrary number of panels instead of assuming a fixed six-panel layout.
+- Ran `1.4.3` with `20` trials, generated `examples/plm/figs/1.4/1.4.3_lambda_path_panels.png` and `examples/plm/figs/1.4/1.4.3_lambda_average_paths.png`, and added the new wide-range summary to `examples/plm/exp_log.md`.

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import os
 import sys
 from collections import defaultdict
@@ -35,6 +36,7 @@ LAMBDA_SWEEP_COLORS = [
     COLOR_BANK["mypurple"],
     COLOR_BANK["myyellow"],
     COLOR_BANK["mygreen"],
+    COLOR_BANK["mylightblue"],
 ]
 
 
@@ -107,14 +109,15 @@ def main() -> None:
             summaries=summaries,
         )
         return
-    if display_exp_id == "1.4.2":
-        _plot_family_14_lambda_sweep(
-            display_exp_id=display_exp_id,
-            fig_dir=fig_dir,
-            results=results,
-        )
-        return
     if family_display_id == "1.4":
+        grouped_records = _collect_tracking_records_by_lambda(results)
+        if len(grouped_records) > 1:
+            _plot_family_14_lambda_sweep(
+                display_exp_id=display_exp_id,
+                fig_dir=fig_dir,
+                grouped_records=grouped_records,
+            )
+            return
         _plot_family_14_nuisance_paths(
             display_exp_id=display_exp_id,
             fig_dir=fig_dir,
@@ -369,12 +372,11 @@ def _collect_tracking_records_by_lambda(
 def _plot_family_14_lambda_sweep(
     display_exp_id: str,
     fig_dir: Path,
-    results: dict[str, object],
+    grouped_records: list[tuple[float, str, list[dict[str, object]]]],
 ) -> None:
     import matplotlib.pyplot as plt
     from matplotlib.lines import Line2D
 
-    grouped_records = _collect_tracking_records_by_lambda(results)
     if not grouped_records:
         raise SystemExit(f"No tracking records were found in the results for {display_exp_id}.")
 
@@ -386,8 +388,17 @@ def _plot_family_14_lambda_sweep(
     y_min = max(min(positive_values) * 0.8, 1e-8)
     y_max = max(positive_values) * 1.1
 
-    fig, axes = plt.subplots(2, 3, figsize=(15, 8), sharex=True, sharey=True)
-    flat_axes = axes.flatten()
+    n_panels = len(grouped_records)
+    n_cols = 3
+    n_rows = math.ceil(n_panels / n_cols)
+    fig, axes = plt.subplots(n_rows, n_cols, figsize=(5.1 * n_cols, 3.8 * n_rows), sharex=True, sharey=True)
+    flat_axes = np.atleast_1d(axes).flatten()
+    max_epoch = max(
+        record.get("epoch_grid", [200])[-1]
+        for _, _, records in grouped_records
+        for record in records
+        if record.get("epoch_grid")
+    )
     for axis, (_, lambda_label, records) in zip(flat_axes, grouped_records):
         mu_labeled = False
         pi_labeled = False
@@ -418,8 +429,10 @@ def _plot_family_14_lambda_sweep(
         axis.set_title(rf"$\lambda = {lambda_label}$")
         axis.set_yscale("log")
         axis.set_ylim(y_min, y_max)
-        axis.set_xlim(0, max(record.get("epoch_grid", [200])[-1] for record in records if record.get("epoch_grid")))
+        axis.set_xlim(0, max_epoch)
         axis.label_outer()
+    for axis in flat_axes[n_panels:]:
+        axis.set_visible(False)
 
     fig.supxlabel("Epoch")
     fig.supylabel("Oracle nuisance MSE on D2")
@@ -437,7 +450,8 @@ def _plot_family_14_lambda_sweep(
 
     fig, axis = plt.subplots(figsize=(8.6, 5.2))
     lambda_handles = []
-    for color, (_, lambda_label, records) in zip(LAMBDA_SWEEP_COLORS, grouped_records):
+    for idx, (_, lambda_label, records) in enumerate(grouped_records):
+        color = LAMBDA_SWEEP_COLORS[idx % len(LAMBDA_SWEEP_COLORS)]
         epoch_grid = records[0]["epoch_grid"]
         mu_paths = np.asarray([record["mu_mse_path"] for record in records], dtype=float)
         pi_paths = np.asarray([record["pi_mse_path"] for record in records], dtype=float)

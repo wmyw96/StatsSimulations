@@ -677,3 +677,73 @@ Generated figures:
 
 - `examples/plm/figs/1.4/1.4.2_lambda_path_panels.png`
 - `examples/plm/figs/1.4/1.4.2_lambda_average_paths.png`
+
+## 1.4.3
+
+Experiment `1.4.3`, stored in the simulation artifact `1.4_3`.
+
+### Goal
+
+This experiment repeats the lambda-sweep study of `1.4.2`, but broadens the regularization range to cover much smaller and much larger penalties. The goal is to see whether the earlier sweep was too narrow to reveal the true optimization tradeoff and to check whether the baseline choice `lambda = 1e-4` still looks reasonable once the search range spans several multiplicative scales.
+
+### Setting and design
+
+Specific data-generating setting:
+
+- DGP class: `PartialLinearModelUniformNoiseDGP`
+- Covariate dimension: `d = 1`
+- Outcome regression: `mu(x) = sin(2 pi x)`
+- Treatment regression: `pi(x) = sin(2 pi x)`
+- Trial-level target coefficient: `beta ~ Unif[-0.5, 0.5]`
+- Treatment noise scale: `sigma_u = 0.5`
+- Outcome noise scale: `sigma_eps = 0.5`
+- Training sample size: `n = 1024`
+- Test sample size: `n_test = 10000`
+- Number of trials: `20`
+
+Method design:
+
+- Compared method family: `PLMDMLOracleTrackingEstimator`
+- Neural network depth: `L = 3`
+- Neural network width: `N = 512`
+- Optimizer: Adam with profiled closed-form updates for the joint least-squares beta on `D2`
+- Learning rate: `lr = 1e-3`
+- Mini-batch size: `batch_size = 1024`
+- Training epochs: `niter = 200`
+- Device: CPU by default unless explicitly changed in the simulation configuration
+- Wide regularization sweep: `lambda_mu = lambda_pi = 5^l * 1e-4` for `l in {-3, -2, -1, 0, 1, 2, 3}`
+- Concrete lambda values: `{8e-7, 4e-6, 2e-5, 1e-4, 5e-4, 2.5e-3, 1.25e-2}`
+
+Visualization design:
+
+- Figure 1 is a seven-panel path plot with shared log-scaled vertical limits. Each panel corresponds to one lambda value and overlays the `20` red `mu` curves and `20` blue `pi` curves.
+- Figure 2 is the amortized plot of trial averages. Each color represents one lambda value, with solid lines for the average `mu` path and dashed lines for the average `pi` path.
+
+### Results
+
+The wider sweep makes the tradeoff much clearer than `1.4.2`. Very large penalties clearly underfit, while the smallest penalties can reach the best average nuisance errors at intermediate epochs, but they also show more late-epoch wobble than the moderate penalties.
+
+Average nuisance MSE at epoch `200` and the epoch of the best average path value:
+
+| lambda | Mu MSE @ 200 | Pi MSE @ 200 | Mu best epoch | Pi best epoch |
+| --- | ---: | ---: | ---: | ---: |
+| 8e-7 | 0.009894 | 0.005321 | 169 | 116 |
+| 4e-6 | 0.021311 | 0.006475 | 160 | 118 |
+| 2e-5 | 0.014589 | 0.009072 | 157 | 118 |
+| 1e-4 | 0.011974 | 0.009215 | 189 | 113 |
+| 5e-4 | 0.016704 | 0.013527 | 127 | 118 |
+| 2.5e-3 | 0.034410 | 0.027198 | 154 | 114 |
+| 1.25e-2 | 0.092431 | 0.058068 | 196 | 194 |
+
+Main observations:
+
+- The largest penalties `2.5e-3` and `1.25e-2` are decisively too strong. They underfit throughout training and never come close to the nuisance errors achieved by the smaller lambdas.
+- The smallest penalty `8e-7` gives the best final average `pi` error and one of the best final `mu` errors, so the earlier `1.4.2` sweep was indeed missing some stronger-performing low-regularization settings.
+- The tiny penalties are not uniformly stable, though. The `4e-6` run achieves one of the best average `mu` minima around epoch `160`, but its final `mu` error at epoch `200` is much worse because the average path rises again late in training.
+- The baseline `1e-4` still looks like a robust compromise. It is not the most aggressive fitter, but it stays competitive and substantially more stable than the smallest settings while avoiding the obvious underfitting of the large penalties.
+- Taken together, the new sweep suggests that if we want a conservative default for downstream experiments, `1e-4` remains defensible, while very small values such as `8e-7` are interesting candidates when the focus is best attainable nuisance fit rather than path stability.
+
+Generated figures:
+
+- `examples/plm/figs/1.4/1.4.3_lambda_path_panels.png`
+- `examples/plm/figs/1.4/1.4.3_lambda_average_paths.png`

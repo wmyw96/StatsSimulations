@@ -166,8 +166,9 @@ def _make_trial_seeded_tracking_factory(method_config: dict):
 
 def _format_lambda_label(value: float) -> str:
     """Format a positive regularization value in compact scientific notation."""
-    formatted = f"{float(value):.0e}"
+    formatted = f"{float(value):.3e}"
     mantissa, exponent = formatted.split("e")
+    mantissa = mantissa.rstrip("0").rstrip(".")
     return f"{mantissa}e{int(exponent)}"
 
 
@@ -342,6 +343,24 @@ def build_experiment_1_4_2(
     )
 
 
+def build_experiment_1_4_3(
+    exp_id: str,
+    n_trials: int,
+    seed_offset: int = 0,
+    device: str = "cpu",
+    result_root: str | Path = DEFAULT_RESULT_ROOT,
+) -> PLMEvaluator:
+    """Build the wide-range lambda-sweep nuisance-tracking experiment."""
+    return build_tracking_experiment(
+        exp_id=exp_id,
+        lambda_values=[(5.0**power) * 1e-4 for power in (-3, -2, -1, 0, 1, 2, 3)],
+        n_trials=n_trials,
+        seed_offset=seed_offset,
+        device=device,
+        result_root=result_root,
+    )
+
+
 def build_random_beta_experiment(
     exp_id: str,
     n_trials: int,
@@ -505,6 +524,7 @@ EXPERIMENT_ID_BUILDERS = {
     "1.3_2": build_experiment_1_3_2,
     "1.4_1": build_experiment_1_4_1,
     "1.4_2": build_experiment_1_4_2,
+    "1.4_3": build_experiment_1_4_3,
 }
 
 

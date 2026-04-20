@@ -82,6 +82,21 @@ class PLMEvaluatorTests(unittest.TestCase):
         lambda_values = [spec["method_config"]["lambda_mu"] for spec in evaluator_14_2.estimators]
         self.assertEqual(lambda_values, [2e-5, 5e-5, 1e-4, 2e-4, 4e-4, 8e-4])
 
+        evaluator_14_3 = build_evaluator_from_exp_id(
+            exp_id="1.4.3",
+            n_trials=1,
+            seed_offset=0,
+            device="cpu",
+        )
+        self.assertEqual(evaluator_14_3.exp_id, "1.4_3")
+        self.assertEqual(evaluator_14_3.result_path.name, "1.4_3.json")
+        self.assertEqual(len(evaluator_14_3.estimators), 7)
+        lambda_values = [spec["method_config"]["lambda_mu"] for spec in evaluator_14_3.estimators]
+        expected_lambda_values = [8e-07, 4e-06, 2e-05, 1e-04, 5e-04, 2.5e-03, 1.25e-02]
+        self.assertEqual(len(lambda_values), len(expected_lambda_values))
+        for observed, expected in zip(lambda_values, expected_lambda_values):
+            self.assertAlmostEqual(observed, expected)
+
     def test_run_and_resume_without_duplicate_trials(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             result_root = Path(temp_dir) / "simulation_results"
