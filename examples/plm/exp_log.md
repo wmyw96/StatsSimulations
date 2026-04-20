@@ -1472,3 +1472,67 @@ Main observations:
 Generated figures:
 
 - `examples/plm/figs/1.5/1.5.10_pi_complexity_mse_comparison.png`
+
+## 1.5.11
+
+Experiment `1.5.11`, stored in the simulation artifact `1.5_11`.
+
+### Goal
+
+This experiment revisits the correlated `g_1/g_2` idea in a one-dimensional setting while fixing the noise-stability concern from the previous families. The design makes both the treatment noise `u` and the outcome noise `eps` have unit variance, keeps the dominant smooth signal simple with `g_1(x) = sin(pi x)`, and uses a rough component `g_2(x)` that is still highly correlated with `g_1(x)`. The goal is to see whether a more stable denominator and a simpler one-dimensional geometry produce a clearer relationship between treatment-regression difficulty and beta estimation.
+
+### Setting and design
+
+Specific data-generating setting:
+
+- DGP class: `PartialLinearModelUniformNoiseDGP`
+- Covariate dimension: `d = 1`
+- Dominant smooth component: `g_1(x) = sin(pi x)`
+- Rough correlated component: `g_2(x) = sign(sin(pi x)) * 0.5 * (|sin(8 pi x)| + |sin(16 pi x)|)`
+- Approximate correlation between `g_1(x)` and `g_2(x)` under `X ~ Unif[-1,1]`: `0.845`
+- Outcome regression: `mu(x) = 0.95 * g_1(x) + 0.05 * g_2(x)`
+- Treatment regression candidates:
+  - `pi_1(x) = g_1(x) + 0.05 * g_2(x)`
+  - `pi_2(x) = g_1(x) + 0.50 * g_2(x)`
+  - `pi_3(x) = g_1(x) + 1.00 * g_2(x)`
+- Trial-level target coefficient: `beta ~ Unif[-0.5, 0.5]`
+- Treatment noise scale: `sigma_u = sqrt(3)` so that `Var(u) = 1`
+- Outcome noise scale: `sigma_eps = sqrt(3)` so that `Var(eps) = 1`
+- Training sample size: `n = 1024`
+- Test sample size: `n_test = 10000`
+- Number of trials: `30`
+
+Method design:
+
+- Compared methods: Neural DML and Oracle AIPW
+- Neural network depth: `L = 3`
+- Neural network width: `N = 512`
+- Outcome-network regularization: `lambda_mu = 2e-5`
+- Treatment-network regularization: `lambda_pi = 2e-5`
+- Optimizer: Adam with profiled closed-form updates for the joint least-squares beta on `D2`
+- Learning rate: `lr = 1e-3`
+- Mini-batch size: `batch_size = 1024`
+- Training epochs: `niter = 200`
+- Device: CPU by default unless explicitly changed in the simulation configuration
+
+### Results
+
+Average MSE over `30` trials:
+
+| pi family | Oracle AIPW beta MSE | DML AIPW beta MSE | Joint LSE beta MSE | DML mu MSE | DML pi MSE |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| `pi_1` | 0.002080 | 0.002178 | 0.002522 | 0.068690 | 0.062680 |
+| `pi_2` | 0.002080 | 0.002317 | 0.006083 | 0.084863 | 0.079773 |
+| `pi_3` | 0.002082 | 0.002008 | 0.008175 | 0.092341 | 0.124890 |
+
+Main observations:
+
+- The treatment nuisance now clearly gets harder across the family: DML `pi` MSE increases from `0.062680` to `0.079773` to `0.124890`.
+- The outcome nuisance also gets modestly harder, but much more slowly: DML `mu` MSE rises from `0.068690` to `0.084863` to `0.092341`.
+- Under this unit-variance one-dimensional design, the DML beta MSE stays very stable and remains close to the oracle AIPW beta MSE across all three settings, rather than drifting downward as it did in `1.5.10`.
+- The quantity that degrades more visibly is the joint least-squares beta estimate: its MSE rises from `0.002522` to `0.006083` to `0.008175`.
+- So the variance correction and the simpler one-dimensional geometry do make the experiment more stable, but they still do not produce a strong monotone deterioration of the final DML AIPW beta estimator.
+
+Generated figures:
+
+- `examples/plm/figs/1.5/1.5.11_pi_complexity_mse_comparison.png`

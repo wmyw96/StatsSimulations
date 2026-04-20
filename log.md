@@ -254,3 +254,9 @@
 
 - Added a design note for the next `1.5` direction: split `mu` into a dominant smooth component `g1` and a small-amplitude rough component `g2`, then build `pi` so the rough `g2` direction is amplified relative to `mu`.
 - This is intended to keep the outcome regression mostly easy while making the treatment regression increasingly aligned with the hard-to-learn component, which is a better candidate for forcing both nuisance error and DML beta error upward together.
+
+## 2026-04-21 16:55:00 EDT
+
+- Added Experiment `1.5.11`, a new one-dimensional unit-variance stress test with `g_1(x) = sin(pi x)`, a rough correlated component `g_2(x) = sign(sin(pi x)) * 0.5 * (|sin(8 pi x)| + |sin(16 pi x)|)`, and `sigma_u = sigma_eps = sqrt(3)` so both noises have variance one.
+- Extended the function registry, exact-id evaluator tests, and experiment builder mapping for `1.5.11`, then ran the full `30`-trial experiment and generated `examples/plm/figs/1.5/1.5.11_pi_complexity_mse_comparison.png`.
+- Documented that the new design finally keeps the DML beta MSE stable and close to oracle while `pi` clearly gets harder, but it still does not produce a strong monotone deterioration in the final DML AIPW beta estimator; the joint least-squares beta is the quantity that degrades more noticeably.
