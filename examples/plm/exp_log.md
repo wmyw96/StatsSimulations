@@ -576,7 +576,7 @@ Tracking design:
 
 - The estimator receives oracle data only so it can measure nuisance MSE during training.
 - The recorded `mu` and `pi` trajectories are evaluated on `D2`, the split used to fit the nuisance networks.
-- The visualization overlays `20` red `mu` curves and `20` blue `pi` curves on the same axes.
+- The visualization overlays `20` red `mu` curves and `20` blue `pi` curves on the same axes, with a log-scaled vertical axis for the nuisance MSE.
 
 ### Results
 

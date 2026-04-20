@@ -137,3 +137,8 @@
 - Extended the PLM evaluator so epoch-path diagnostics such as `epoch_grid`, `mu_mse_path`, and `pi_mse_path` are persisted in experiment result files when available.
 - Added experiment family `1.4` with exact id `1.4_1` for nuisance-learning trajectory diagnostics at fixed `n = 1024`.
 - Ran Experiment `1.4.1` with `20` trials, generated `examples/plm/figs/1.4/1.4.1_nuisance_mse_paths.png`, and documented the optimization-path summary in `examples/plm/exp_log.md`.
+
+## 2026-04-20 00:45:00 EDT
+
+- Updated the `1.4.1` nuisance-trajectory figure so the vertical axis uses a logarithmic scale, making late-epoch improvements easier to inspect.
+- Revised the `1.4.1` experiment note in `examples/plm/exp_log.md` to describe the log-scaled trajectory visualization.

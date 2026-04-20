@@ -319,6 +319,7 @@ def _plot_family_14_nuisance_paths(
 
     plt.xlabel("Epoch")
     plt.ylabel("Oracle nuisance MSE on D2")
+    plt.yscale("log")
     plt.title(f"{display_exp_id}: nuisance-learning trajectories")
     plt.legend()
     plt.tight_layout()
