@@ -1410,3 +1410,65 @@ Main observations:
 Generated figures:
 
 - `examples/plm/figs/1.5/1.5.9_pi_complexity_mse_comparison.png`
+
+## 1.5.10
+
+Experiment `1.5.10`, stored in the simulation artifact `1.5_10`.
+
+### Goal
+
+This experiment revisits the correlated `g_1/g_2` design using a much wider coefficient range in the treatment regression: `g_1(x) + 0.05 g_2(x)`, `g_1(x) + 0.5 g_2(x)`, and `g_1(x) + 1.0 g_2(x)`. The purpose is to make the treatment-regression difficulty change much more substantially than it did in `1.5.9`.
+
+### Setting and design
+
+Specific data-generating setting:
+
+- DGP class: `PartialLinearModelUniformNoiseDGP`
+- Covariate dimension: `d = 4`
+- Smooth component: `g_1(x) = sin(pi x_1) + cos(pi x_2)`
+- Rough correlated component: `g_2(x) = sign(g_1(x)) * 0.5 * (|sin(8 pi x_1)| + |cos(8 pi x_2)|)`
+- Outcome regression: `mu(x) = 0.95 * g_1(x) + 0.05 * g_2(x)`
+- Treatment regression candidates:
+  - `pi_1(x) = g_1(x) + 0.05 * g_2(x)`
+  - `pi_2(x) = g_1(x) + 0.50 * g_2(x)`
+  - `pi_3(x) = g_1(x) + 1.00 * g_2(x)`
+- Trial-level target coefficient: `beta ~ Unif[-0.5, 0.5]`
+- Treatment noise scale: `sigma_u = 0.5`
+- Outcome noise scale: `sigma_eps = 0.5`
+- Training sample size: `n = 1024`
+- Test sample size: `n_test = 10000`
+- Number of trials: `30`
+
+Method design:
+
+- Compared methods: Neural DML and Oracle AIPW
+- Neural network depth: `L = 3`
+- Neural network width: `N = 512`
+- Outcome-network regularization: `lambda_mu = 2e-5`
+- Treatment-network regularization: `lambda_pi = 2e-5`
+- Optimizer: Adam with profiled closed-form updates for the joint least-squares beta on `D2`
+- Learning rate: `lr = 1e-3`
+- Mini-batch size: `batch_size = 1024`
+- Training epochs: `niter = 200`
+- Device: CPU by default unless explicitly changed in the simulation configuration
+
+### Results
+
+Average MSE over `30` trials:
+
+| pi family | Oracle AIPW beta MSE | DML AIPW beta MSE | Joint LSE beta MSE | DML mu MSE | DML pi MSE |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| `pi_1` | 0.002801 | 0.037985 | 0.249516 | 0.342280 | 0.056181 |
+| `pi_2` | 0.003166 | 0.024524 | 0.183829 | 0.370814 | 0.111811 |
+| `pi_3` | 0.003866 | 0.009362 | 0.098294 | 0.306001 | 0.276027 |
+
+Main observations:
+
+- The wider range succeeds at making the treatment-regression error much more visibly different. The DML `pi` MSE now increases strongly across the three settings: `0.056181 -> 0.111811 -> 0.276027`.
+- However, the DML beta MSE moves in the opposite direction: `0.037985 -> 0.024524 -> 0.009362`. The joint LSE beta MSE also decreases strongly across the family.
+- So this wider range confirms that the main issue in `1.5.9` was not merely that the coefficient range was too small. Even after making the treatment-regression difficulty much more pronounced, beta estimation still becomes easier in this family.
+- The most likely explanation is that increasing the rough correlated component is also changing the geometry of the target problem in a favorable way for identifying beta, even while it makes `pi` harder to approximate pointwise.
+
+Generated figures:
+
+- `examples/plm/figs/1.5/1.5.10_pi_complexity_mse_comparison.png`

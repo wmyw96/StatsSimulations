@@ -280,6 +280,21 @@ def correlated_pi_3(x: np.ndarray) -> np.ndarray:
     return easy_mu_sin_pi_x1_plus_cos_pi_x2(x) + 0.20 * correlated_hard_component_g2(x)
 
 
+def correlated_wide_pi_1(x: np.ndarray) -> np.ndarray:
+    """First wide-range correlated treatment regression."""
+    return easy_mu_sin_pi_x1_plus_cos_pi_x2(x) + 0.05 * correlated_hard_component_g2(x)
+
+
+def correlated_wide_pi_2(x: np.ndarray) -> np.ndarray:
+    """Second wide-range correlated treatment regression."""
+    return easy_mu_sin_pi_x1_plus_cos_pi_x2(x) + 0.50 * correlated_hard_component_g2(x)
+
+
+def correlated_wide_pi_3(x: np.ndarray) -> np.ndarray:
+    """Third wide-range correlated treatment regression."""
+    return easy_mu_sin_pi_x1_plus_cos_pi_x2(x) + 1.00 * correlated_hard_component_g2(x)
+
+
 FUNCTION_REGISTRY = {
     "sin_2pi_first_coordinate": sin_2pi_first_coordinate,
     "sin_4pi_first_coordinate": sin_4pi_first_coordinate,
@@ -315,6 +330,9 @@ FUNCTION_REGISTRY = {
     "correlated_pi_1": correlated_pi_1,
     "correlated_pi_2": correlated_pi_2,
     "correlated_pi_3": correlated_pi_3,
+    "correlated_wide_pi_1": correlated_wide_pi_1,
+    "correlated_wide_pi_2": correlated_wide_pi_2,
+    "correlated_wide_pi_3": correlated_wide_pi_3,
 }
 
 FUNCTION_LABELS = {
@@ -352,6 +370,9 @@ FUNCTION_LABELS = {
     "correlated_pi_1": r"$g_1(x)+0.05\,g_2(x)$",
     "correlated_pi_2": r"$g_1(x)+0.10\,g_2(x)$",
     "correlated_pi_3": r"$g_1(x)+0.20\,g_2(x)$",
+    "correlated_wide_pi_1": r"$g_1(x)+0.05\,g_2(x)$",
+    "correlated_wide_pi_2": r"$g_1(x)+0.50\,g_2(x)$",
+    "correlated_wide_pi_3": r"$g_1(x)+1.00\,g_2(x)$",
 }
 
 
@@ -1547,6 +1568,81 @@ def build_experiment_1_5_9(
     )
 
 
+def build_experiment_1_5_10(
+    exp_id: str,
+    n_trials: int,
+    seed_offset: int = 0,
+    device: str = "cpu",
+    result_root: str | Path = DEFAULT_RESULT_ROOT,
+) -> PLMEvaluator:
+    """Build the wide-range correlated g1/g2 family requested after 1.5.9."""
+    dgp_param_grid = {
+        "d": 4,
+        "func_mu_name": "correlated_mu_eps005",
+        "func_pi_name": [
+            "correlated_wide_pi_1",
+            "correlated_wide_pi_2",
+            "correlated_wide_pi_3",
+        ],
+        "beta_sampler_name": "uniform",
+        "beta_low": -0.5,
+        "beta_high": 0.5,
+        "sigma_u": 0.5,
+        "sigma_eps": 0.5,
+        "n_test": 10000,
+        "n": [1024],
+    }
+
+    dml_method_config = {
+        "L": 3,
+        "N": 512,
+        "lambda_mu": 2e-5,
+        "lambda_pi": 2e-5,
+        "niter": 200,
+        "lr": 1e-3,
+        "batch_size": 1024,
+        "device": device,
+        "seed_mode": "trial_seed",
+        "d": 4,
+    }
+
+    oracle_method_config = {
+        "func_mu_name": "correlated_mu_eps005",
+        "func_pi_name": None,
+        "follows_dgp_pi": True,
+    }
+
+    estimators = [
+        {
+            "name": "dml_nn",
+            "is_oracle": False,
+            "factory_name": "make_plm_dml_estimator",
+            "method_config": deepcopy(dml_method_config),
+            "accepts_trial_seed": True,
+            "factory": _make_trial_seeded_dml_factory(dml_method_config),
+        },
+        {
+            "name": "oracle_aipw",
+            "is_oracle": True,
+            "factory_name": "make_plm_oracle_estimator",
+            "method_config": deepcopy(oracle_method_config),
+            "accepts_dgp_config": True,
+            "factory": _make_oracle_factory(oracle_method_config),
+        },
+    ]
+
+    return PLMEvaluator(
+        exp_name=EXPERIMENT_NAME,
+        exp_id=exp_id,
+        dgp_generator=plm_uniform_noise_dgp_generator,
+        dgp_param_grid=dgp_param_grid,
+        estimators=estimators,
+        n_trials=n_trials,
+        seed_offset=seed_offset,
+        result_root=result_root,
+    )
+
+
 EXPERIMENT_FAMILY_BUILDERS = {
     "1.1": build_experiment_1_1,
     "1.2": build_experiment_1_2,
@@ -1575,6 +1671,7 @@ EXPERIMENT_ID_BUILDERS = {
     "1.5_7": build_experiment_1_5_7,
     "1.5_8": build_experiment_1_5_8,
     "1.5_9": build_experiment_1_5_9,
+    "1.5_10": build_experiment_1_5_10,
 }
 
 
