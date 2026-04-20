@@ -198,3 +198,8 @@
 
 - Added a four-function progressive `pi` candidate family with fixed `mu(x)=sin(2 pi x)` to the shared function registry, designed so both nuisance roughness and overlap with `mu` can be increased together in a later experiment.
 - The new candidates use correlations with `mu` of roughly `0.25`, `0.50`, `0.75`, and `0.90`, which should make it easier to tune a sequence where both DML and joint LSE beta performance degrade rather than improve.
+
+## 2026-04-20 16:15:00 EDT
+
+- Added Experiment `1.5.4` using the new four-level progressive `pi` family at `n = 1024` with `lambda_mu = lambda_pi = 2e-5`, and ran it with `30` trials per treatment-regression choice.
+- Generated `examples/plm/figs/1.5/1.5.4_pi_complexity_mse_comparison.png` and documented the result that this family did not produce the desired monotone degradation of DML and joint LSE beta performance.

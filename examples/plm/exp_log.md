@@ -1039,3 +1039,66 @@ Main observations:
 Generated figures:
 
 - `examples/plm/figs/1.5/1.5.3_pi_complexity_mse_comparison.png`
+
+## 1.5.4
+
+Experiment `1.5.4`, stored in the simulation artifact `1.5_4`.
+
+### Goal
+
+This experiment tests the four-function progressive `pi` family designed to increase both approximation difficulty and overlap with `mu(x) = sin(2 pi x)`. The intended goal was to find a sequence in which both the DML beta estimator and the joint least-squares beta estimator degrade as the treatment regression becomes harder and more confounded with the outcome nuisance.
+
+### Setting and design
+
+Specific data-generating setting:
+
+- DGP class: `PartialLinearModelUniformNoiseDGP`
+- Covariate dimension: `d = 1`
+- Outcome regression: `mu(x) = sin(2 pi x)`
+- Treatment regression candidates:
+  - `pi_1(x) = 0.25 * mu(x) + sqrt(1 - 0.25^2) * sin(4 pi x)`
+  - `pi_2(x) = 0.5 * mu(x) + sqrt(1 - 0.5^2) * sin(8 pi x)`
+  - `pi_3(x) = 0.75 * mu(x) + sqrt(1 - 0.75^2) * sqrt(0.5) * sign(sin(8 pi x))`
+  - `pi_4(x) = 0.9 * mu(x) + sqrt(1 - 0.9^2) * r(x)`
+- Here `r(x)` is a multiscale signed-wave component built from `sign(sin(8 pi x))`, `sign(sin(16 pi x))`, and `sign(sin(32 pi x))`.
+- Trial-level target coefficient: `beta ~ Unif[-0.5, 0.5]`
+- Treatment noise scale: `sigma_u = 0.5`
+- Outcome noise scale: `sigma_eps = 0.5`
+- Training sample size: `n = 1024`
+- Test sample size: `n_test = 10000`
+- Number of trials: `30`
+
+Method design:
+
+- Compared methods: Neural DML and Oracle AIPW
+- Neural network depth: `L = 3`
+- Neural network width: `N = 512`
+- Outcome-network regularization: `lambda_mu = 2e-5`
+- Treatment-network regularization: `lambda_pi = 2e-5`
+- Optimizer: Adam with profiled closed-form updates for the joint least-squares beta on `D2`
+- Learning rate: `lr = 1e-3`
+- Mini-batch size: `batch_size = 1024`
+- Training epochs: `niter = 200`
+- Device: CPU by default unless explicitly changed in the simulation configuration
+
+### Results
+
+Average MSE over `30` trials:
+
+| pi family | Oracle AIPW beta MSE | DML AIPW beta MSE | Joint LSE beta MSE | DML mu MSE | DML pi MSE |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| `pi_1` | 0.002154 | 0.013797 | 0.021027 | 0.020802 | 0.022323 |
+| `pi_2` | 0.002073 | 0.002373 | 0.001469 | 0.007759 | 0.086517 |
+| `pi_3` | 0.002110 | 0.003856 | 0.001862 | 0.008438 | 0.081240 |
+| `pi_4` | 0.002128 | 0.002578 | 0.004561 | 0.011688 | 0.043856 |
+
+Main observations:
+
+- This family did not achieve the monotone degradation target. The treatment nuisance error does rise substantially from `pi_1` to `pi_2`, but the DML beta and joint LSE beta errors both improve sharply rather than worsen.
+- The worst beta performance is actually at `pi_1`, the smoothest and least aligned member of the family. After that, the beta errors stay relatively small, even though the nuisance fits become rougher and the treatment-regression error is much larger.
+- The progressive family was still informative: it shows that simply increasing both roughness and overlap in an informal way is not enough. The geometry of the regression problem is still changing in a way that sometimes helps beta estimation rather than hurting it.
+- In particular, the rougher members seem to make `pi` harder to approximate, but not in a way that consistently damages the target estimation stage. So this is not yet the right family for constructing a clean “harder nuisance implies worse beta” stress test.
+
+Generated figures:
+
+- `examples/plm/figs/1.5/1.5.4_pi_complexity_mse_comparison.png`
