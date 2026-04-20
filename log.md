@@ -193,3 +193,8 @@
 ## 2026-04-20 15:30:00 EDT
 
 - Updated the `1.5.3` comparison to include the joint least-squares beta curve and added an interpretation note explaining that the main driver appears to be the overlap between `mu(X)` and the systematic part of `T`, not the standalone difficulty of estimating `pi(X)`.
+
+## 2026-04-20 15:45:00 EDT
+
+- Added a four-function progressive `pi` candidate family with fixed `mu(x)=sin(2 pi x)` to the shared function registry, designed so both nuisance roughness and overlap with `mu` can be increased together in a later experiment.
+- The new candidates use correlations with `mu` of roughly `0.25`, `0.50`, `0.75`, and `0.90`, which should make it easier to tune a sequence where both DML and joint LSE beta performance degrade rather than improve.

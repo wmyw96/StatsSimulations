@@ -70,6 +70,49 @@ def sign_sin_2pi_times_abs_sin_8pi_first_coordinate(x: np.ndarray) -> np.ndarray
     return np.sign(np.sin(2.0 * np.pi * x0)) * np.abs(np.sin(8.0 * np.pi * x0))
 
 
+def _progressive_pi_multiscale_component(x: np.ndarray) -> np.ndarray:
+    """Return a rough multiscale signed-wave component on the first coordinate."""
+    x0 = x[:, [0]]
+    raw = (
+        np.sign(np.sin(8.0 * np.pi * x0))
+        + 0.5 * np.sign(np.sin(16.0 * np.pi * x0))
+        + 0.25 * np.sign(np.sin(32.0 * np.pi * x0))
+    ) / 1.75
+    return 1.08 * raw
+
+
+def progressive_pi_1_first_coordinate(x: np.ndarray) -> np.ndarray:
+    """Smooth and weakly aligned candidate for a progressive pi family."""
+    x0 = x[:, [0]]
+    mu = np.sin(2.0 * np.pi * x0)
+    aux = np.sin(4.0 * np.pi * x0)
+    return 0.25 * mu + np.sqrt(1.0 - 0.25**2) * aux
+
+
+def progressive_pi_2_first_coordinate(x: np.ndarray) -> np.ndarray:
+    """More oscillatory and more aligned candidate for a progressive pi family."""
+    x0 = x[:, [0]]
+    mu = np.sin(2.0 * np.pi * x0)
+    aux = np.sin(8.0 * np.pi * x0)
+    return 0.5 * mu + np.sqrt(1.0 - 0.5**2) * aux
+
+
+def progressive_pi_3_first_coordinate(x: np.ndarray) -> np.ndarray:
+    """Discontinuous and strongly aligned candidate for a progressive pi family."""
+    x0 = x[:, [0]]
+    mu = np.sin(2.0 * np.pi * x0)
+    aux = np.sqrt(0.5) * np.sign(np.sin(8.0 * np.pi * x0))
+    return 0.75 * mu + np.sqrt(1.0 - 0.75**2) * aux
+
+
+def progressive_pi_4_first_coordinate(x: np.ndarray) -> np.ndarray:
+    """Very rough multiscale candidate for a progressive pi family."""
+    x0 = x[:, [0]]
+    mu = np.sin(2.0 * np.pi * x0)
+    aux = _progressive_pi_multiscale_component(x)
+    return 0.9 * mu + np.sqrt(1.0 - 0.9**2) * aux
+
+
 FUNCTION_REGISTRY = {
     "sin_2pi_first_coordinate": sin_2pi_first_coordinate,
     "sin_4pi_first_coordinate": sin_4pi_first_coordinate,
@@ -80,6 +123,10 @@ FUNCTION_REGISTRY = {
     "sign_sin_2pi_times_abs_sin_2pi_first_coordinate": sign_sin_2pi_times_abs_sin_2pi_first_coordinate,
     "sign_sin_2pi_times_abs_sin_4pi_first_coordinate": sign_sin_2pi_times_abs_sin_4pi_first_coordinate,
     "sign_sin_2pi_times_abs_sin_8pi_first_coordinate": sign_sin_2pi_times_abs_sin_8pi_first_coordinate,
+    "progressive_pi_1_first_coordinate": progressive_pi_1_first_coordinate,
+    "progressive_pi_2_first_coordinate": progressive_pi_2_first_coordinate,
+    "progressive_pi_3_first_coordinate": progressive_pi_3_first_coordinate,
+    "progressive_pi_4_first_coordinate": progressive_pi_4_first_coordinate,
 }
 
 FUNCTION_LABELS = {
@@ -92,6 +139,10 @@ FUNCTION_LABELS = {
     "sign_sin_2pi_times_abs_sin_2pi_first_coordinate": r"$\operatorname{sign}(\sin(2\pi x))|\sin(2\pi x)|$",
     "sign_sin_2pi_times_abs_sin_4pi_first_coordinate": r"$\operatorname{sign}(\sin(2\pi x))|\sin(4\pi x)|$",
     "sign_sin_2pi_times_abs_sin_8pi_first_coordinate": r"$\operatorname{sign}(\sin(2\pi x))|\sin(8\pi x)|$",
+    "progressive_pi_1_first_coordinate": r"$0.25\,\mu(x)+\sqrt{1-0.25^2}\sin(4\pi x)$",
+    "progressive_pi_2_first_coordinate": r"$0.5\,\mu(x)+\sqrt{1-0.5^2}\sin(8\pi x)$",
+    "progressive_pi_3_first_coordinate": r"$0.75\,\mu(x)+\sqrt{1-0.75^2}\sqrt{0.5}\,\operatorname{sign}(\sin(8\pi x))$",
+    "progressive_pi_4_first_coordinate": r"$0.9\,\mu(x)+\sqrt{1-0.9^2}\,r(x)$",
 }
 
 
