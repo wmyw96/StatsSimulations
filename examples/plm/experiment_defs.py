@@ -12,6 +12,7 @@ from simlab.dgp.partial_linear import PartialLinearModelUniformNoiseDGP
 from simlab.estimators.plm_est import (
     PLMDMLEstimator,
     PLMDMLOracleTrackingEstimator,
+    PLMMinimaxDebiasEstimator,
     PLMOracleAIPWEstimator,
 )
 from simlab.evaluation.plm_eval import PLMEvaluator
@@ -573,6 +574,33 @@ def make_plm_dml_tracking_estimator(method_config: dict) -> PLMDMLOracleTracking
     }
     return PLMDMLOracleTrackingEstimator(
         name="dml_nn_tracking",
+        hyper_parameters=hyper_parameters,
+        d=int(method_config["d"]),
+        device=str(method_config.get("device", "cpu")),
+    )
+
+
+def make_plm_minimax_debias_estimator(method_config: dict) -> PLMMinimaxDebiasEstimator:
+    """Construct the paper-style minimax debiasing estimator for the PLM."""
+    hyper_parameters = {
+        "L": method_config["L"],
+        "N": method_config["N"],
+        "lambda_mu": method_config["lambda_mu"],
+        "lambda_pi": method_config["lambda_pi"],
+        "niter": method_config["niter"],
+        "lr": method_config["lr"],
+        "batch_size": method_config["batch_size"],
+        "seed": method_config.get("seed"),
+        "lambda_debias": method_config.get("lambda_debias"),
+        "weight_bound": method_config.get("weight_bound", 5.0),
+        "niter_debias": method_config.get("niter_debias", method_config["niter"]),
+        "niter_adversary": method_config.get("niter_adversary", 5),
+        "debias_lr": method_config.get("debias_lr", method_config["lr"]),
+        "smooth_eps": method_config.get("smooth_eps", 1e-6),
+        "variance_mode": method_config.get("variance_mode", "constant_one"),
+    }
+    return PLMMinimaxDebiasEstimator(
+        name="plm_minimax_debias",
         hyper_parameters=hyper_parameters,
         d=int(method_config["d"]),
         device=str(method_config.get("device", "cpu")),

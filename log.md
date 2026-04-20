@@ -271,3 +271,9 @@
 - Added Experiment `1.5.12`, a new one-dimensional shared-`g/h` family where both `mu(x)` and `pi(x)` contain the same centered, variance-normalized hard component `h(x)` and each `pi_k` is rescaled so the variance of `pi_k(X)` stays approximately fixed.
 - Extended the PLM evaluator to record two new diagnostics on the oracle test sample: the nuisance-error correlation and the oracle-beta residual correlation, then added exact-id coverage for `1.5.12` in the evaluator tests.
 - Ran the full `30`-trial `1.5.12` experiment and generated `examples/plm/figs/1.5/1.5.12_pi_complexity_mse_comparison.png`; the new family does increase nuisance-error alignment and residual correlation, but it still only produces a mild change in the final DML AIPW beta MSE.
+
+## 2026-04-21 20:05:00 EDT
+
+- Implemented a new paper-style PLM estimator based on the minimax debiasing program in equation `(2.3)` of `aplm.pdf`, with the requested stabilized inner penalty `n^{-1} \\, \\sum_i (\\beta T_i + f(X_i))^2` replacing the paper’s original `n^{-1} \\, \\sum_i f^2(X_i)`.
+- Added the new `PLMMinimaxDebiasEstimator`, a difference-class adversary network, a factory helper in `examples/plm/experiment_defs.py`, and package exports so the estimator can be imported and used alongside the existing DML and oracle baselines.
+- Added unit tests covering the new estimator’s fit/predict path, bounded debiasing weights, default `lambda_debias` behavior, and evaluator compatibility; `17` unit tests passed after the change.

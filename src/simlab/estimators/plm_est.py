@@ -84,6 +84,18 @@ class ResidualReLUNet(nn.Module):
         return self.output_layer(outputs)
 
 
+class DifferenceResidualReLUNet(nn.Module):
+    """Difference of two residual ReLU networks for representing a difference class."""
+
+    def __init__(self, input_dim: int, depth: int, width: int):
+        super().__init__()
+        self.net_plus = ResidualReLUNet(input_dim=input_dim, depth=depth, width=width)
+        self.net_minus = ResidualReLUNet(input_dim=input_dim, depth=depth, width=width)
+
+    def forward(self, inputs: torch.Tensor) -> torch.Tensor:
+        return self.net_plus(inputs) - self.net_minus(inputs)
+
+
 class PLMDMLEstimator(Estimator):
     """Double machine learning estimator for the partial linear model."""
 
@@ -345,6 +357,146 @@ class PLMDMLOracleTrackingEstimator(PLMDMLEstimator):
         return self._fit_internal(data=data, record_oracle_paths=True)
 
 
+class PLMMinimaxDebiasEstimator(PLMDMLEstimator):
+    """Paper-style minimax debiasing estimator based on Eq. (2.3)."""
+
+    def __init__(
+        self,
+        name: str,
+        hyper_parameters: ConfigDict,
+        d: int,
+        device: str = "cpu",
+    ):
+        super().__init__(name=name, hyper_parameters=hyper_parameters, d=d, device=device)
+        self.lambda_debias = hyper_parameters.get("lambda_debias")
+        self.weight_bound = float(hyper_parameters.get("weight_bound", 5.0))
+        self.niter_debias = int(hyper_parameters.get("niter_debias", self.niter))
+        self.niter_adversary = int(hyper_parameters.get("niter_adversary", 5))
+        self.debias_lr = float(hyper_parameters.get("debias_lr", self.lr))
+        self.smooth_eps = float(hyper_parameters.get("smooth_eps", 1e-6))
+        self.variance_mode = str(hyper_parameters.get("variance_mode", "constant_one"))
+
+        if self.weight_bound <= 0:
+            raise ValueError("weight_bound must be positive.")
+        if self.niter_debias <= 0:
+            raise ValueError("niter_debias must be positive.")
+        if self.niter_adversary <= 0:
+            raise ValueError("niter_adversary must be positive.")
+        if self.debias_lr <= 0:
+            raise ValueError("debias_lr must be positive.")
+        if self.variance_mode != "constant_one":
+            raise ValueError("Only variance_mode='constant_one' is currently supported.")
+
+    def fit(self, data: SampledData) -> EstimateResult:
+        x, t, y = _extract_plm_arrays(data)
+        d1_x, d1_t, d1_y, d2_x, d2_t, d2_y = _split_plm_data(x, t, y)
+
+        x2_tensor = torch.as_tensor(d2_x, dtype=torch.float32, device=self.device)
+        t2_tensor = torch.as_tensor(d2_t, dtype=torch.float32, device=self.device)
+        y2_tensor = torch.as_tensor(d2_y, dtype=torch.float32, device=self.device)
+
+        dataset = TensorDataset(x2_tensor, t2_tensor, y2_tensor)
+        batch_size = min(self.batch_size, len(dataset))
+        generator = None
+        if self.seed is not None:
+            generator = torch.Generator()
+            generator.manual_seed(int(self.seed))
+        loader = DataLoader(
+            dataset,
+            batch_size=batch_size,
+            shuffle=True,
+            generator=generator,
+        )
+
+        last_joint_loss = float("nan")
+        last_pi_loss = float("nan")
+        full_joint_loss = float("nan")
+        full_pi_loss = float("nan")
+
+        self.est_mu.train()
+        self.est_pi.train()
+        for _ in range(self.niter):
+            for batch_x, batch_t, batch_y in loader:
+                self.optimizer.zero_grad()
+                mu_pred = self.est_mu(batch_x)
+                pi_pred = self.est_pi(batch_x)
+                joint_loss = torch.mean((self.beta.detach() * batch_t + mu_pred - batch_y) ** 2)
+                pi_loss = torch.mean((batch_t - pi_pred) ** 2)
+                total_loss = (
+                    joint_loss
+                    + pi_loss
+                    + self.lambda_mu * _weight_l2_penalty(self.est_mu)
+                    + self.lambda_pi * _weight_l2_penalty(self.est_pi)
+                )
+                total_loss.backward()
+                self.optimizer.step()
+                last_joint_loss = float(joint_loss.detach().cpu().item())
+                last_pi_loss = float(pi_loss.detach().cpu().item())
+
+            self.est_mu.eval()
+            self.est_pi.eval()
+            with torch.no_grad():
+                mu_d2 = self.est_mu(x2_tensor)
+                pi_d2 = self.est_pi(x2_tensor)
+                profiled_beta = _profile_beta_from_tensors(
+                    t=t2_tensor,
+                    y=y2_tensor,
+                    mu=mu_d2,
+                )
+                self.beta.data.fill_(profiled_beta)
+                full_joint_loss = float(torch.mean((self.beta * t2_tensor + mu_d2 - y2_tensor) ** 2).cpu().item())
+                full_pi_loss = float(torch.mean((t2_tensor - pi_d2) ** 2).cpu().item())
+            self.est_mu.train()
+            self.est_pi.train()
+
+        self.est_mu.eval()
+        self.est_pi.eval()
+        with torch.no_grad():
+            d1_x_tensor = torch.as_tensor(d1_x, dtype=torch.float32, device=self.device)
+            mu_hat = self.est_mu(d1_x_tensor).detach().cpu().numpy()
+
+        lambda_debias = (
+            float(self.lambda_debias)
+            if self.lambda_debias is not None
+            else 1.0 / float(np.sqrt(len(d1_x)))
+        )
+        a_hat, debias_diagnostics = _fit_minimax_debiasing_weights(
+            x=d1_x,
+            t=d1_t,
+            est_mu=self.est_mu,
+            d=self.d,
+            depth=self.L,
+            width=self.N,
+            device=self.device,
+            weight_bound=self.weight_bound,
+            lambda_debias=lambda_debias,
+            niter_debias=self.niter_debias,
+            niter_adversary=self.niter_adversary,
+            debias_lr=self.debias_lr,
+            smooth_eps=self.smooth_eps,
+            seed=self.seed,
+        )
+
+        beta_hat = float(np.mean((d1_y - mu_hat) * a_hat))
+        diagnostics = {
+            "beta_joint": float(self.beta.detach().cpu().item()),
+            "final_joint_loss": full_joint_loss if np.isfinite(full_joint_loss) else last_joint_loss,
+            "final_pi_loss": full_pi_loss if np.isfinite(full_pi_loss) else last_pi_loss,
+            "n_d1": len(d1_x),
+            "n_d2": len(d2_x),
+            "device": str(self.device),
+            "variance_mode": self.variance_mode,
+            "lambda_debias": lambda_debias,
+            **debias_diagnostics,
+        }
+        self.est_params = EstimateResult(
+            target="beta",
+            estimate=beta_hat,
+            diagnostics=diagnostics,
+        )
+        return self.est_params
+
+
 def _resolve_device(device: str) -> torch.device:
     """Resolve and validate a torch device string."""
     resolved = torch.device(device)
@@ -378,6 +530,87 @@ def _profile_beta_from_tensors(t: torch.Tensor, y: torch.Tensor, mu: torch.Tenso
         raise ZeroDivisionError("Cannot profile beta because mean(T^2) is numerically zero.")
     numerator = torch.mean(t * (y - mu))
     return float((numerator / denominator).detach().cpu().item())
+
+
+def _fit_minimax_debiasing_weights(
+    x: np.ndarray,
+    t: np.ndarray,
+    est_mu: nn.Module,
+    d: int,
+    depth: int,
+    width: int,
+    device: torch.device,
+    weight_bound: float,
+    lambda_debias: float,
+    niter_debias: int,
+    niter_adversary: int,
+    debias_lr: float,
+    smooth_eps: float,
+    seed: int | None,
+) -> tuple[np.ndarray, dict[str, float]]:
+    """Fit empirical debiasing weights with the stabilized paper objective."""
+    if seed is not None:
+        _set_torch_seed(int(seed) + 1)
+
+    x_tensor = torch.as_tensor(_validate_feature_matrix(x, expected_dim=d), dtype=torch.float32, device=device)
+    t_tensor = torch.as_tensor(_as_float_column(t, len(x), label="t"), dtype=torch.float32, device=device)
+    vhat_tensor = torch.ones_like(t_tensor, device=device)
+
+    initial_weights = t_tensor / torch.clamp(torch.mean(t_tensor * t_tensor), min=1e-6)
+    initial_weights = torch.clamp(initial_weights, -0.99 * weight_bound, 0.99 * weight_bound)
+    raw_a = nn.Parameter(torch.atanh(initial_weights / weight_bound))
+    adv_beta = nn.Parameter(torch.zeros(1, device=device))
+    adv_f = DifferenceResidualReLUNet(input_dim=d, depth=depth, width=width).to(device)
+
+    optimizer_a = torch.optim.Adam([raw_a], lr=debias_lr)
+    optimizer_adv = torch.optim.Adam(list(adv_f.parameters()) + [adv_beta], lr=debias_lr)
+
+    def current_weights() -> torch.Tensor:
+        return weight_bound * torch.tanh(raw_a)
+
+    def stabilized_value(a_tensor: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        signal = adv_beta * t_tensor + adv_f(x_tensor)
+        imbalance = torch.mean(signal * a_tensor) - adv_beta
+        smooth_abs = torch.sqrt(imbalance * imbalance + smooth_eps)
+        stability = torch.mean(signal * signal)
+        return smooth_abs - stability, imbalance, stability
+
+    final_imbalance = 0.0
+    final_stability = 0.0
+    final_adversary_value = 0.0
+    final_objective = 0.0
+    for _ in range(niter_debias):
+        for _ in range(niter_adversary):
+            optimizer_adv.zero_grad()
+            a_tensor = current_weights().detach()
+            adversary_value, _, _ = stabilized_value(a_tensor)
+            (-adversary_value).backward()
+            optimizer_adv.step()
+
+        optimizer_a.zero_grad()
+        a_tensor = current_weights()
+        adversary_value, imbalance, stability = stabilized_value(a_tensor)
+        objective = lambda_debias * torch.mean(vhat_tensor * (a_tensor * a_tensor)) + adversary_value
+        objective.backward()
+        optimizer_a.step()
+
+        final_imbalance = float(imbalance.detach().cpu().item())
+        final_stability = float(stability.detach().cpu().item())
+        final_adversary_value = float(adversary_value.detach().cpu().item())
+        final_objective = float(objective.detach().cpu().item())
+
+    a_hat = current_weights().detach().cpu().numpy()
+    diagnostics = {
+        "weight_bound": float(weight_bound),
+        "mean_ta": float(np.mean(t * a_hat)),
+        "mean_a_sq": float(np.mean(a_hat * a_hat)),
+        "max_abs_weight": float(np.max(np.abs(a_hat))),
+        "final_debias_objective": final_objective,
+        "final_adversary_value": final_adversary_value,
+        "final_imbalance": final_imbalance,
+        "final_stability_term": final_stability,
+    }
+    return a_hat, diagnostics
 
 
 def _build_oracle_tracking_states(
