@@ -164,6 +164,74 @@ def _make_trial_seeded_tracking_factory(method_config: dict):
     return factory
 
 
+def _format_lambda_label(value: float) -> str:
+    """Format a positive regularization value in compact scientific notation."""
+    formatted = f"{float(value):.0e}"
+    mantissa, exponent = formatted.split("e")
+    return f"{mantissa}e{int(exponent)}"
+
+
+def build_tracking_experiment(
+    exp_id: str,
+    lambda_values: list[float],
+    n_trials: int,
+    seed_offset: int = 0,
+    device: str = "cpu",
+    result_root: str | Path = DEFAULT_RESULT_ROOT,
+) -> PLMEvaluator:
+    """Build a nuisance-tracking experiment with one estimator per lambda choice."""
+    dgp_param_grid = {
+        "d": 1,
+        "func_mu_name": "sin_2pi_first_coordinate",
+        "func_pi_name": "sin_2pi_first_coordinate",
+        "beta_sampler_name": "uniform",
+        "beta_low": -0.5,
+        "beta_high": 0.5,
+        "sigma_u": 0.5,
+        "sigma_eps": 0.5,
+        "n_test": 10000,
+        "n": [1024],
+    }
+
+    estimators = []
+    for lambda_value in lambda_values:
+        lambda_label = _format_lambda_label(lambda_value)
+        tracking_method_config = {
+            "L": 3,
+            "N": 512,
+            "lambda_mu": float(lambda_value),
+            "lambda_pi": float(lambda_value),
+            "lambda_label": lambda_label,
+            "niter": 200,
+            "lr": 1e-3,
+            "batch_size": 1024,
+            "device": device,
+            "seed_mode": "trial_seed",
+            "d": 1,
+        }
+        estimators.append(
+            {
+                "name": f"dml_nn_tracking_lambda_{lambda_label}",
+                "is_oracle": True,
+                "factory_name": "make_plm_dml_tracking_estimator",
+                "method_config": deepcopy(tracking_method_config),
+                "accepts_trial_seed": True,
+                "factory": _make_trial_seeded_tracking_factory(tracking_method_config),
+            }
+        )
+
+    return PLMEvaluator(
+        exp_name=EXPERIMENT_NAME,
+        exp_id=exp_id,
+        dgp_generator=plm_uniform_noise_dgp_generator,
+        dgp_param_grid=dgp_param_grid,
+        estimators=estimators,
+        n_trials=n_trials,
+        seed_offset=seed_offset,
+        result_root=result_root,
+    )
+
+
 def build_experiment_1_1(
     exp_id: str,
     n_trials: int,
@@ -246,51 +314,30 @@ def build_experiment_1_4_1(
     result_root: str | Path = DEFAULT_RESULT_ROOT,
 ) -> PLMEvaluator:
     """Build evaluator configuration for nuisance-path tracking in the random-beta PLM."""
-    dgp_param_grid = {
-        "d": 1,
-        "func_mu_name": "sin_2pi_first_coordinate",
-        "func_pi_name": "sin_2pi_first_coordinate",
-        "beta_sampler_name": "uniform",
-        "beta_low": -0.5,
-        "beta_high": 0.5,
-        "sigma_u": 0.5,
-        "sigma_eps": 0.5,
-        "n_test": 10000,
-        "n": [1024],
-    }
-
-    tracking_method_config = {
-        "L": 3,
-        "N": 512,
-        "lambda_mu": 1e-4,
-        "lambda_pi": 1e-4,
-        "niter": 200,
-        "lr": 1e-3,
-        "batch_size": 1024,
-        "device": device,
-        "seed_mode": "trial_seed",
-        "d": 1,
-    }
-
-    estimators = [
-        {
-            "name": "dml_nn_tracking",
-            "is_oracle": True,
-            "factory_name": "make_plm_dml_tracking_estimator",
-            "method_config": deepcopy(tracking_method_config),
-            "accepts_trial_seed": True,
-            "factory": _make_trial_seeded_tracking_factory(tracking_method_config),
-        }
-    ]
-
-    return PLMEvaluator(
-        exp_name=EXPERIMENT_NAME,
+    return build_tracking_experiment(
         exp_id=exp_id,
-        dgp_generator=plm_uniform_noise_dgp_generator,
-        dgp_param_grid=dgp_param_grid,
-        estimators=estimators,
+        lambda_values=[1e-4],
         n_trials=n_trials,
         seed_offset=seed_offset,
+        device=device,
+        result_root=result_root,
+    )
+
+
+def build_experiment_1_4_2(
+    exp_id: str,
+    n_trials: int,
+    seed_offset: int = 0,
+    device: str = "cpu",
+    result_root: str | Path = DEFAULT_RESULT_ROOT,
+) -> PLMEvaluator:
+    """Build the lambda-sweep nuisance-tracking experiment."""
+    return build_tracking_experiment(
+        exp_id=exp_id,
+        lambda_values=[2e-5, 5e-5, 1e-4, 2e-4, 4e-4, 8e-4],
+        n_trials=n_trials,
+        seed_offset=seed_offset,
+        device=device,
         result_root=result_root,
     )
 
@@ -457,6 +504,7 @@ EXPERIMENT_ID_BUILDERS = {
     "1.3_1": build_experiment_1_3,
     "1.3_2": build_experiment_1_3_2,
     "1.4_1": build_experiment_1_4_1,
+    "1.4_2": build_experiment_1_4_2,
 }
 
 

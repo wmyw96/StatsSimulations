@@ -142,3 +142,9 @@
 
 - Updated the `1.4.1` nuisance-trajectory figure so the vertical axis uses a logarithmic scale, making late-epoch improvements easier to inspect.
 - Revised the `1.4.1` experiment note in `examples/plm/exp_log.md` to describe the log-scaled trajectory visualization.
+
+## 2026-04-20 00:55:00 EDT
+
+- Added Experiment `1.4.2`, a six-value lambda sweep for the oracle-tracked nuisance-learning study with `lambda_mu = lambda_pi in {2e-5, 5e-5, 1e-4, 2e-4, 4e-4, 8e-4}`.
+- Extended the PLM visualizer with two `1.4.2` outputs: a six-panel raw trajectory figure with shared log-scaled y-limits and an amortized average-path figure colored by lambda and styled by nuisance target.
+- Ran `1.4.2` with `20` trials, generated both `examples/plm/figs/1.4/1.4.2_lambda_path_panels.png` and `examples/plm/figs/1.4/1.4.2_lambda_average_paths.png`, and documented the lambda-sweep summary in `examples/plm/exp_log.md`.

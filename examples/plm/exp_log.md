@@ -609,3 +609,71 @@ Interpretation:
 Generated figure:
 
 - `examples/plm/figs/1.4/1.4.1_nuisance_mse_paths.png`
+
+## 1.4.2
+
+Experiment `1.4.2`, stored in the simulation artifact `1.4_2`.
+
+### Goal
+
+This experiment keeps the same nuisance-tracking design as `1.4.1`, but varies the shared regularization level `lambda_mu = lambda_pi` to see how the choice of weight decay changes the optimization path of the neural nuisance learners. The goal is to understand whether the baseline choice `lambda = 1e-4` is in a reasonable range and how strongly larger or smaller penalties slow down or stabilize learning.
+
+### Setting and design
+
+Specific data-generating setting:
+
+- DGP class: `PartialLinearModelUniformNoiseDGP`
+- Covariate dimension: `d = 1`
+- Outcome regression: `mu(x) = sin(2 pi x)`
+- Treatment regression: `pi(x) = sin(2 pi x)`
+- Trial-level target coefficient: `beta ~ Unif[-0.5, 0.5]`
+- Treatment noise scale: `sigma_u = 0.5`
+- Outcome noise scale: `sigma_eps = 0.5`
+- Training sample size: `n = 1024`
+- Test sample size: `n_test = 10000`
+- Number of trials: `20`
+
+Method design:
+
+- Compared method family: `PLMDMLOracleTrackingEstimator`
+- Neural network depth: `L = 3`
+- Neural network width: `N = 512`
+- Optimizer: Adam with profiled closed-form updates for the joint least-squares beta on `D2`
+- Learning rate: `lr = 1e-3`
+- Mini-batch size: `batch_size = 1024`
+- Training epochs: `niter = 200`
+- Device: CPU by default unless explicitly changed in the simulation configuration
+- Regularization sweep: `lambda_mu = lambda_pi in {2e-5, 5e-5, 1e-4, 2e-4, 4e-4, 8e-4}`
+
+Visualization design:
+
+- Figure 1 is a six-panel path plot. Each panel corresponds to one lambda value and overlays the `20` red `mu` curves and `20` blue `pi` curves on the same axes.
+- The six panels share the same vertical limits and use a logarithmic MSE axis, so the regularization effect can be compared directly across lambdas.
+- Figure 2 is an amortized plot of the trial averages. Each color represents one lambda value, with solid lines for the average `mu` path and dashed lines for the average `pi` path.
+
+### Results
+
+The lambda sweep shows a clear bias-variance pattern: stronger regularization slows nuisance learning and leaves both `mu` and `pi` at higher error levels throughout the path, while the smallest regularization values produce the best late-epoch fits in this design.
+
+Average nuisance MSE at epoch `200` and the epoch of the best average path value:
+
+| lambda | Mu MSE @ 200 | Pi MSE @ 200 | Mu best epoch | Pi best epoch |
+| --- | ---: | ---: | ---: | ---: |
+| 2e-5 | 0.014589 | 0.009072 | 157 | 118 |
+| 5e-5 | 0.013047 | 0.008978 | 190 | 113 |
+| 1e-4 | 0.011974 | 0.009215 | 189 | 113 |
+| 2e-4 | 0.012257 | 0.010021 | 148 | 110 |
+| 4e-4 | 0.021217 | 0.012560 | 152 | 112 |
+| 8e-4 | 0.036417 | 0.015509 | 148 | 114 |
+
+Main observations:
+
+- The large-penalty settings `4e-4` and `8e-4` are clearly too aggressive here. They slow learning early and also finish at much higher `mu` and `pi` errors than the smaller penalties.
+- The baseline setting `1e-4` remains a sensible middle choice. Its final average `mu` path is slightly better than `5e-5` and close to the best of the sweep, while its `pi` path stays competitive.
+- The smallest penalties `2e-5` and `5e-5` learn fastest in the early and middle stages, especially for `pi`, but they also show more late-epoch wobble than the best medium-penalty runs.
+- Overall, the sweep supports using `1e-4` as a stable default, while suggesting that mild reductions such as `5e-5` may also be worth considering if we want slightly less shrinkage without moving into the clearly under-regularized regime.
+
+Generated figures:
+
+- `examples/plm/figs/1.4/1.4.2_lambda_path_panels.png`
+- `examples/plm/figs/1.4/1.4.2_lambda_average_paths.png`

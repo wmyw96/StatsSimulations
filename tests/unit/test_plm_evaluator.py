@@ -67,8 +67,20 @@ class PLMEvaluatorTests(unittest.TestCase):
         self.assertEqual(evaluator_14.exp_id, "1.4_1")
         self.assertEqual(evaluator_14.result_path.name, "1.4_1.json")
         self.assertEqual(evaluator_14.dgp_param_grid["n"], [1024])
-        self.assertEqual(evaluator_14.estimators[0]["name"], "dml_nn_tracking")
+        self.assertEqual(evaluator_14.estimators[0]["name"], "dml_nn_tracking_lambda_1e-4")
         self.assertTrue(evaluator_14.estimators[0]["accepts_trial_seed"])
+
+        evaluator_14_2 = build_evaluator_from_exp_id(
+            exp_id="1.4.2",
+            n_trials=1,
+            seed_offset=0,
+            device="cpu",
+        )
+        self.assertEqual(evaluator_14_2.exp_id, "1.4_2")
+        self.assertEqual(evaluator_14_2.result_path.name, "1.4_2.json")
+        self.assertEqual(len(evaluator_14_2.estimators), 6)
+        lambda_values = [spec["method_config"]["lambda_mu"] for spec in evaluator_14_2.estimators]
+        self.assertEqual(lambda_values, [2e-5, 5e-5, 1e-4, 2e-4, 4e-4, 8e-4])
 
     def test_run_and_resume_without_duplicate_trials(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -285,7 +297,7 @@ class PLMEvaluatorTests(unittest.TestCase):
             results = evaluator.run()
             estimator_record = results["trial_results"][0]["estimator_results"][0]
 
-            self.assertEqual(estimator_record["estimator_name"], "dml_nn_tracking")
+            self.assertEqual(estimator_record["estimator_name"], "dml_nn_tracking_lambda_1e-4")
             self.assertEqual(estimator_record["epoch_grid"], [0, 1, 2])
             self.assertEqual(len(estimator_record["mu_mse_path"]), 3)
             self.assertEqual(len(estimator_record["pi_mse_path"]), 3)

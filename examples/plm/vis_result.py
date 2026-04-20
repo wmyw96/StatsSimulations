@@ -28,6 +28,15 @@ COLOR_BANK = {
     "mygreen": "#6bb392",
 }
 
+LAMBDA_SWEEP_COLORS = [
+    COLOR_BANK["myred"],
+    COLOR_BANK["myblue"],
+    COLOR_BANK["myorange"],
+    COLOR_BANK["mypurple"],
+    COLOR_BANK["myyellow"],
+    COLOR_BANK["mygreen"],
+]
+
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Visualize PLM simulation results.")
@@ -96,6 +105,13 @@ def main() -> None:
             fig_dir=fig_dir,
             n_values=n_values,
             summaries=summaries,
+        )
+        return
+    if display_exp_id == "1.4.2":
+        _plot_family_14_lambda_sweep(
+            display_exp_id=display_exp_id,
+            fig_dir=fig_dir,
+            results=results,
         )
         return
     if family_display_id == "1.4":
@@ -288,7 +304,7 @@ def _plot_family_14_nuisance_paths(
         estimator_records = [
             record
             for record in trial["estimator_results"]
-            if record["estimator_name"] == "dml_nn_tracking"
+            if "mu_mse_path" in record and "pi_mse_path" in record
         ]
         if not estimator_records:
             continue
@@ -327,6 +343,126 @@ def _plot_family_14_nuisance_paths(
     plt.savefig(output_path, dpi=220)
     plt.close()
     print(f"Saved {output_path}")
+
+
+def _collect_tracking_records_by_lambda(
+    results: dict[str, object],
+) -> list[tuple[float, str, list[dict[str, object]]]]:
+    """Group tracking records by the shared lambda value stored in method_config."""
+    grouped: dict[float, list[dict[str, object]]] = defaultdict(list)
+    labels: dict[float, str] = {}
+    for trial in results["trial_results"]:
+        for record in trial["estimator_results"]:
+            if "mu_mse_path" not in record or "pi_mse_path" not in record:
+                continue
+            method_config = record.get("method_config", {})
+            lambda_value = float(method_config.get("lambda_mu"))
+            lambda_label = method_config.get("lambda_label", f"{lambda_value:.0e}")
+            grouped[lambda_value].append(record)
+            labels[lambda_value] = str(lambda_label)
+    return [
+        (lambda_value, labels[lambda_value], grouped[lambda_value])
+        for lambda_value in sorted(grouped)
+    ]
+
+
+def _plot_family_14_lambda_sweep(
+    display_exp_id: str,
+    fig_dir: Path,
+    results: dict[str, object],
+) -> None:
+    import matplotlib.pyplot as plt
+    from matplotlib.lines import Line2D
+
+    grouped_records = _collect_tracking_records_by_lambda(results)
+    if not grouped_records:
+        raise SystemExit(f"No tracking records were found in the results for {display_exp_id}.")
+
+    positive_values = []
+    for _, _, records in grouped_records:
+        for record in records:
+            positive_values.extend(value for value in record.get("mu_mse_path", []) if value > 0.0)
+            positive_values.extend(value for value in record.get("pi_mse_path", []) if value > 0.0)
+    y_min = max(min(positive_values) * 0.8, 1e-8)
+    y_max = max(positive_values) * 1.1
+
+    fig, axes = plt.subplots(2, 3, figsize=(15, 8), sharex=True, sharey=True)
+    flat_axes = axes.flatten()
+    for axis, (_, lambda_label, records) in zip(flat_axes, grouped_records):
+        mu_labeled = False
+        pi_labeled = False
+        for record in records:
+            epoch_grid = record.get("epoch_grid", [])
+            mu_path = record.get("mu_mse_path", [])
+            pi_path = record.get("pi_mse_path", [])
+            if not epoch_grid or not mu_path or not pi_path:
+                continue
+            axis.plot(
+                epoch_grid,
+                mu_path,
+                color=COLOR_BANK["myred"],
+                linewidth=1.0,
+                alpha=0.45,
+                label="mu path" if not mu_labeled else None,
+            )
+            mu_labeled = True
+            axis.plot(
+                epoch_grid,
+                pi_path,
+                color=COLOR_BANK["myblue"],
+                linewidth=1.0,
+                alpha=0.45,
+                label="pi path" if not pi_labeled else None,
+            )
+            pi_labeled = True
+        axis.set_title(rf"$\lambda = {lambda_label}$")
+        axis.set_yscale("log")
+        axis.set_ylim(y_min, y_max)
+        axis.set_xlim(0, max(record.get("epoch_grid", [200])[-1] for record in records if record.get("epoch_grid")))
+        axis.label_outer()
+
+    fig.supxlabel("Epoch")
+    fig.supylabel("Oracle nuisance MSE on D2")
+    legend_handles = [
+        Line2D([0], [0], color=COLOR_BANK["myred"], linewidth=1.2, label="mu path"),
+        Line2D([0], [0], color=COLOR_BANK["myblue"], linewidth=1.2, label="pi path"),
+    ]
+    fig.legend(handles=legend_handles, loc="upper center", ncol=2, frameon=False)
+    fig.suptitle(f"{display_exp_id}: nuisance-learning paths across lambda", y=0.98)
+    fig.tight_layout(rect=(0.02, 0.02, 1.0, 0.94))
+    panel_path = fig_dir / f"{display_exp_id}_lambda_path_panels.png"
+    fig.savefig(panel_path, dpi=220)
+    plt.close(fig)
+    print(f"Saved {panel_path}")
+
+    fig, axis = plt.subplots(figsize=(8.6, 5.2))
+    lambda_handles = []
+    for color, (_, lambda_label, records) in zip(LAMBDA_SWEEP_COLORS, grouped_records):
+        epoch_grid = records[0]["epoch_grid"]
+        mu_paths = np.asarray([record["mu_mse_path"] for record in records], dtype=float)
+        pi_paths = np.asarray([record["pi_mse_path"] for record in records], dtype=float)
+        mu_mean = mu_paths.mean(axis=0)
+        pi_mean = pi_paths.mean(axis=0)
+        axis.plot(epoch_grid, mu_mean, color=color, linewidth=2.0)
+        axis.plot(epoch_grid, pi_mean, color=color, linewidth=2.0, linestyle="--")
+        lambda_handles.append(Line2D([0], [0], color=color, linewidth=2.4, label=rf"$\lambda={lambda_label}$"))
+
+    axis.set_xlabel("Epoch")
+    axis.set_ylabel("Average oracle nuisance MSE on D2")
+    axis.set_yscale("log")
+    axis.set_title(f"{display_exp_id}: average nuisance-learning paths across lambda")
+    lambda_legend = axis.legend(handles=lambda_handles, loc="upper right", title=r"$\lambda$")
+    axis.add_artist(lambda_legend)
+    style_handles = [
+        Line2D([0], [0], color="black", linewidth=2.0, linestyle="-", label="mu average"),
+        Line2D([0], [0], color="black", linewidth=2.0, linestyle="--", label="pi average"),
+    ]
+    axis.legend(handles=style_handles, loc="lower left", frameon=False)
+    fig.tight_layout()
+    average_path = fig_dir / f"{display_exp_id}_lambda_average_paths.png"
+    fig.savefig(average_path, dpi=220)
+    plt.close(fig)
+    print(f"Saved {average_path}")
 
 
 if __name__ == "__main__":
