@@ -58,6 +58,18 @@ class PLMEvaluatorTests(unittest.TestCase):
         )
         self.assertTrue(evaluator_13_2.estimators[0]["accepts_trial_seed"])
 
+        evaluator_14 = build_evaluator_from_exp_id(
+            exp_id="1.4.1",
+            n_trials=1,
+            seed_offset=0,
+            device="cpu",
+        )
+        self.assertEqual(evaluator_14.exp_id, "1.4_1")
+        self.assertEqual(evaluator_14.result_path.name, "1.4_1.json")
+        self.assertEqual(evaluator_14.dgp_param_grid["n"], [1024])
+        self.assertEqual(evaluator_14.estimators[0]["name"], "dml_nn_tracking")
+        self.assertTrue(evaluator_14.estimators[0]["accepts_trial_seed"])
+
     def test_run_and_resume_without_duplicate_trials(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             result_root = Path(temp_dir) / "simulation_results"
@@ -245,6 +257,39 @@ class PLMEvaluatorTests(unittest.TestCase):
             self.assertIn("beta_true", trial_record)
             self.assertGreaterEqual(trial_record["beta_true"], -0.5)
             self.assertLessEqual(trial_record["beta_true"], 0.5)
+
+    def test_tracking_family_serializes_epoch_paths(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            result_root = Path(temp_dir) / "simulation_results"
+            evaluator = build_evaluator_from_exp_id(
+                exp_id="1.4.1",
+                n_trials=1,
+                seed_offset=2,
+                device="cpu",
+                result_root=result_root,
+            )
+            evaluator.dgp_param_grid["n"] = [16]
+            evaluator.dgp_param_grid["n_test"] = 32
+            tracking_config = dict(evaluator.estimators[0]["method_config"])
+            tracking_config["N"] = 8
+            tracking_config["niter"] = 2
+            tracking_config["batch_size"] = 8
+            tracking_config["d"] = 1
+            evaluator.estimators[0]["method_config"] = tracking_config
+            evaluator.estimators[0]["factory"] = lambda *, trial_seed=None, cfg=dict(tracking_config): __import__(
+                "examples.plm.experiment_defs",
+                fromlist=["make_plm_dml_tracking_estimator"],
+            ).make_plm_dml_tracking_estimator({**cfg, "seed": trial_seed})
+            evaluator.estimators[0]["accepts_trial_seed"] = True
+
+            results = evaluator.run()
+            estimator_record = results["trial_results"][0]["estimator_results"][0]
+
+            self.assertEqual(estimator_record["estimator_name"], "dml_nn_tracking")
+            self.assertEqual(estimator_record["epoch_grid"], [0, 1, 2])
+            self.assertEqual(len(estimator_record["mu_mse_path"]), 3)
+            self.assertEqual(len(estimator_record["pi_mse_path"]), 3)
+            self.assertEqual(estimator_record["tracking_split"], "D2")
 
 
 if __name__ == "__main__":

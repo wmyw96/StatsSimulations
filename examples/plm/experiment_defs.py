@@ -8,7 +8,11 @@ from pathlib import Path
 import numpy as np
 
 from simlab.dgp.partial_linear import PartialLinearModelUniformNoiseDGP
-from simlab.estimators.plm_est import PLMDMLEstimator, PLMOracleAIPWEstimator
+from simlab.estimators.plm_est import (
+    PLMDMLEstimator,
+    PLMDMLOracleTrackingEstimator,
+    PLMOracleAIPWEstimator,
+)
 from simlab.evaluation.plm_eval import PLMEvaluator
 
 EXPERIMENT_NAME = "plm"
@@ -93,6 +97,26 @@ def make_plm_oracle_estimator(method_config: dict) -> PLMOracleAIPWEstimator:
     )
 
 
+def make_plm_dml_tracking_estimator(method_config: dict) -> PLMDMLOracleTrackingEstimator:
+    """Construct a neural DML estimator that records oracle nuisance MSE paths."""
+    hyper_parameters = {
+        "L": method_config["L"],
+        "N": method_config["N"],
+        "lambda_mu": method_config["lambda_mu"],
+        "lambda_pi": method_config["lambda_pi"],
+        "niter": method_config["niter"],
+        "lr": method_config["lr"],
+        "batch_size": method_config["batch_size"],
+        "seed": method_config.get("seed"),
+    }
+    return PLMDMLOracleTrackingEstimator(
+        name="dml_nn_tracking",
+        hyper_parameters=hyper_parameters,
+        d=int(method_config["d"]),
+        device=str(method_config.get("device", "cpu")),
+    )
+
+
 def _make_trial_seeded_dml_factory(method_config: dict):
     """Return a factory that injects the trial seed into the DML estimator config."""
     base_config = deepcopy(method_config)
@@ -123,6 +147,19 @@ def _make_oracle_factory(method_config: dict):
     def factory(*, trial_seed: int | None = None) -> PLMOracleAIPWEstimator:
         del trial_seed
         return make_plm_oracle_estimator(deepcopy(base_config))
+
+    return factory
+
+
+def _make_trial_seeded_tracking_factory(method_config: dict):
+    """Return a factory that injects the trial seed into the tracking estimator config."""
+    base_config = deepcopy(method_config)
+
+    def factory(*, trial_seed: int | None = None) -> PLMDMLOracleTrackingEstimator:
+        config = deepcopy(base_config)
+        if trial_seed is not None:
+            config["seed"] = int(trial_seed)
+        return make_plm_dml_tracking_estimator(config)
 
     return factory
 
@@ -198,6 +235,63 @@ def build_experiment_1_3_2(
         device=device,
         result_root=result_root,
         trial_seeded_dml=True,
+    )
+
+
+def build_experiment_1_4_1(
+    exp_id: str,
+    n_trials: int,
+    seed_offset: int = 0,
+    device: str = "cpu",
+    result_root: str | Path = DEFAULT_RESULT_ROOT,
+) -> PLMEvaluator:
+    """Build evaluator configuration for nuisance-path tracking in the random-beta PLM."""
+    dgp_param_grid = {
+        "d": 1,
+        "func_mu_name": "sin_2pi_first_coordinate",
+        "func_pi_name": "sin_2pi_first_coordinate",
+        "beta_sampler_name": "uniform",
+        "beta_low": -0.5,
+        "beta_high": 0.5,
+        "sigma_u": 0.5,
+        "sigma_eps": 0.5,
+        "n_test": 10000,
+        "n": [1024],
+    }
+
+    tracking_method_config = {
+        "L": 3,
+        "N": 512,
+        "lambda_mu": 1e-4,
+        "lambda_pi": 1e-4,
+        "niter": 200,
+        "lr": 1e-3,
+        "batch_size": 1024,
+        "device": device,
+        "seed_mode": "trial_seed",
+        "d": 1,
+    }
+
+    estimators = [
+        {
+            "name": "dml_nn_tracking",
+            "is_oracle": True,
+            "factory_name": "make_plm_dml_tracking_estimator",
+            "method_config": deepcopy(tracking_method_config),
+            "accepts_trial_seed": True,
+            "factory": _make_trial_seeded_tracking_factory(tracking_method_config),
+        }
+    ]
+
+    return PLMEvaluator(
+        exp_name=EXPERIMENT_NAME,
+        exp_id=exp_id,
+        dgp_generator=plm_uniform_noise_dgp_generator,
+        dgp_param_grid=dgp_param_grid,
+        estimators=estimators,
+        n_trials=n_trials,
+        seed_offset=seed_offset,
+        result_root=result_root,
     )
 
 
@@ -352,6 +446,7 @@ EXPERIMENT_FAMILY_BUILDERS = {
     "1.1": build_experiment_1_1,
     "1.2": build_experiment_1_2,
     "1.3": build_experiment_1_3,
+    "1.4": build_experiment_1_4_1,
 }
 
 EXPERIMENT_ID_BUILDERS = {
@@ -361,6 +456,7 @@ EXPERIMENT_ID_BUILDERS = {
     "1.2_2": build_experiment_1_2,
     "1.3_1": build_experiment_1_3,
     "1.3_2": build_experiment_1_3_2,
+    "1.4_1": build_experiment_1_4_1,
 }
 
 

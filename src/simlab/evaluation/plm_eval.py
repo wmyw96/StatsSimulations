@@ -214,8 +214,9 @@ class PLMEvaluator(Evaluator):
         else:
             diagnostics = getattr(fit_result, "diagnostics", {})
             beta_initial = float(diagnostics.get("beta_joint", beta_hat))
+        diagnostics = getattr(fit_result, "diagnostics", {})
 
-        return {
+        result_record = {
             "estimator_name": estimator_spec["name"],
             "is_oracle": estimator_spec["is_oracle"],
             "factory_name": estimator_spec["factory_name"],
@@ -231,6 +232,10 @@ class PLMEvaluator(Evaluator):
             "mu_pi_product_mse": float(np.mean((mu_pred * pi_pred - mu_true * pi_true) ** 2)),
             "runtime_sec": runtime_sec,
         }
+        for key in ("epoch_grid", "mu_mse_path", "pi_mse_path", "tracking_split", "tracking_n"):
+            if key in diagnostics:
+                result_record[key] = deepcopy(diagnostics[key])
+        return result_record
 
     def _build_dgp(self, dgp_config: dict[str, Any], seed: int | None) -> Any:
         """Build a DGP with a reproducible NumPy global state for the generator."""

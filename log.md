@@ -130,3 +130,10 @@
 - Updated the resume path so top-level result metadata such as `n_trials` is refreshed when a run is extended, instead of leaving stale headers in the saved JSON.
 - Added trial-seeded DML support for exact experiment ids like `1.3.2`, while preserving the archived fixed-seed behavior for `1.3.1`.
 - Reconstructed `simulation_results/plm/1.3_1.json` back to the original 30-trial archived run, reran the corrected random-seed experiment as `1.3_2.json` with 100 trials, regenerated the `1.3.1` and `1.3.2` unified figures, and rewrote the `1.3` sections of `examples/plm/exp_log.md`.
+
+## 2026-04-20 00:35:00 EDT
+
+- Added `PLMDMLOracleTrackingEstimator`, which records oracle `mu` and `pi` MSE trajectories across epochs while keeping the same DML fitting pipeline.
+- Extended the PLM evaluator so epoch-path diagnostics such as `epoch_grid`, `mu_mse_path`, and `pi_mse_path` are persisted in experiment result files when available.
+- Added experiment family `1.4` with exact id `1.4_1` for nuisance-learning trajectory diagnostics at fixed `n = 1024`.
+- Ran Experiment `1.4.1` with `20` trials, generated `examples/plm/figs/1.4/1.4.1_nuisance_mse_paths.png`, and documented the optimization-path summary in `examples/plm/exp_log.md`.

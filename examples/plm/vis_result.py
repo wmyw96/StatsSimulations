@@ -98,6 +98,13 @@ def main() -> None:
             summaries=summaries,
         )
         return
+    if family_display_id == "1.4":
+        _plot_family_14_nuisance_paths(
+            display_exp_id=display_exp_id,
+            fig_dir=fig_dir,
+            results=results,
+        )
+        return
 
     method_names = sorted(
         {
@@ -262,6 +269,60 @@ def _plot_family_13_unified(
     plt.legend()
     plt.tight_layout()
     output_path = fig_dir / f"{display_exp_id}_unified_mse_scaling.png"
+    plt.savefig(output_path, dpi=220)
+    plt.close()
+    print(f"Saved {output_path}")
+
+
+def _plot_family_14_nuisance_paths(
+    display_exp_id: str,
+    fig_dir: Path,
+    results: dict[str, object],
+) -> None:
+    import matplotlib.pyplot as plt
+
+    plt.figure(figsize=(7.5, 4.8))
+    mu_labeled = False
+    pi_labeled = False
+    for trial in results["trial_results"]:
+        estimator_records = [
+            record
+            for record in trial["estimator_results"]
+            if record["estimator_name"] == "dml_nn_tracking"
+        ]
+        if not estimator_records:
+            continue
+        record = estimator_records[0]
+        epoch_grid = record.get("epoch_grid", [])
+        mu_path = record.get("mu_mse_path", [])
+        pi_path = record.get("pi_mse_path", [])
+        if not epoch_grid or not mu_path or not pi_path:
+            continue
+        plt.plot(
+            epoch_grid,
+            mu_path,
+            color=COLOR_BANK["myred"],
+            linewidth=1.2,
+            alpha=0.5,
+            label="mu path" if not mu_labeled else None,
+        )
+        mu_labeled = True
+        plt.plot(
+            epoch_grid,
+            pi_path,
+            color=COLOR_BANK["myblue"],
+            linewidth=1.2,
+            alpha=0.5,
+            label="pi path" if not pi_labeled else None,
+        )
+        pi_labeled = True
+
+    plt.xlabel("Epoch")
+    plt.ylabel("Oracle nuisance MSE on D2")
+    plt.title(f"{display_exp_id}: nuisance-learning trajectories")
+    plt.legend()
+    plt.tight_layout()
+    output_path = fig_dir / f"{display_exp_id}_nuisance_mse_paths.png"
     plt.savefig(output_path, dpi=220)
     plt.close()
     print(f"Saved {output_path}")

@@ -48,6 +48,21 @@ Default hyper-parameters:
 
 - none beyond the specification of the oracle nuisance functions themselves.
 
+### Method3: Neural DML With Oracle Nuisance Tracking (`PLMDMLOracleTrackingEstimator`)
+
+This method shares the same estimation and prediction pipeline as the neural DML estimator, but it augments the fit routine with an oracle monitoring path. After every training epoch, it evaluates the current nuisance networks on the fitted split and records the mean squared error of `mu_hat(X)` against the oracle `mu(X)` and of `pi_hat(X)` against the oracle `pi(X)`. These trajectory diagnostics are used only for optimization monitoring and do not affect the fitted parameter updates.
+
+Default hyper-parameters:
+
+- `L = 3`: network depth for the nuisance models.
+- `N = 512`: hidden-layer width for the nuisance models.
+- `lambda_mu = 1e-4`: L2 regularization level for the outcome network.
+- `lambda_pi = 1e-4`: L2 regularization level for the treatment network.
+- `niter = 200`: number of training epochs recorded in the trajectory plot.
+- `lr = 1e-3`: Adam learning rate.
+- `batch_size = 1024`: mini-batch size used during training.
+- `device = "cpu"` by default: computation device for the neural network fitting routine.
+
 ## Evaluation
 
 For each estimator, the experiment records the following quantities.
@@ -58,6 +73,7 @@ For each estimator, the experiment records the following quantities.
 - Mean squared error of `mu`: the average squared difference between the predicted outcome regression and the oracle nuisance value on an independent test sample.
 - Mean squared error of `pi`: the average squared difference between the predicted treatment regression and the oracle nuisance value on an independent test sample.
 - For experiments that study nuisance-product behavior, the evaluator also records the empirical test-sample mean of the fitted product `mu_hat(X) * pi_hat(X)`, together with the oracle mean of `mu(X) * pi(X)`, so that cross-trial scatter plots can compare this nuisance summary against the final beta estimation error.
+- For experiments that study optimization dynamics, the evaluator can also store epoch-by-epoch oracle nuisance MSE paths for `mu` and `pi` on the fitted split.
 
 The summary view aggregates these quantities across repeated trials for each experimental configuration.
 
@@ -519,3 +535,77 @@ Main observations:
 Generated figure:
 
 - `examples/plm/figs/1.3/1.3.2_unified_mse_scaling.png`
+
+## 1.4.1
+
+Experiment `1.4.1`, stored in the simulation artifact `1.4_1`.
+
+### Goal
+
+This experiment studies whether the neural nuisance learners appear fully optimized by epoch `200`. Instead of focusing on the final beta estimate, it tracks how the oracle mean squared errors of `mu_hat` and `pi_hat` evolve over training epochs.
+
+### Setting and design
+
+Specific data-generating setting:
+
+- DGP class: `PartialLinearModelUniformNoiseDGP`
+- Covariate dimension: `d = 1`
+- Outcome regression: `mu(x) = sin(2 pi x)`
+- Treatment regression: `pi(x) = sin(2 pi x)`
+- Trial-level target coefficient: `beta ~ Unif[-0.5, 0.5]`
+- Treatment noise scale: `sigma_u = 0.5`
+- Outcome noise scale: `sigma_eps = 0.5`
+- Training sample size: `n = 1024`
+- Test sample size: `n_test = 10000`
+- Number of trials: `20`
+
+Method design:
+
+- Compared method: `PLMDMLOracleTrackingEstimator`
+- Neural network depth: `L = 3`
+- Neural network width: `N = 512`
+- Outcome-network regularization: `lambda_mu = 1e-4`
+- Treatment-network regularization: `lambda_pi = 1e-4`
+- Optimizer: Adam with profiled closed-form updates for the joint least-squares beta on `D2`
+- Learning rate: `lr = 1e-3`
+- Mini-batch size: `batch_size = 1024`
+- Training epochs: `niter = 200`
+- Device: CPU by default unless explicitly changed in the simulation configuration
+
+Tracking design:
+
+- The estimator receives oracle data only so it can measure nuisance MSE during training.
+- The recorded `mu` and `pi` trajectories are evaluated on `D2`, the split used to fit the nuisance networks.
+- The visualization overlays `20` red `mu` curves and `20` blue `pi` curves on the same axes.
+
+### Results
+
+The trajectory plot suggests that the nuisance learners improve rapidly early in training, then largely plateau before epoch `200`.
+
+Average oracle nuisance MSE along the training path:
+
+| Epoch | Mu MSE | Pi MSE |
+| --- | ---: | ---: |
+| 0 | 0.563377 | 0.582682 |
+| 50 | 0.121951 | 0.058196 |
+| 100 | 0.015878 | 0.007435 |
+| 150 | 0.010380 | 0.007901 |
+| 200 | 0.011974 | 0.009215 |
+
+Additional trajectory summary:
+
+- For `mu`, the average epoch of the minimum path value is `152.35`, with median `147.5`.
+- For `pi`, the average epoch of the minimum path value is `128.65`, with median `119.5`.
+- In `11` out of `20` trials, the `mu` minimum is reached by epoch `150`.
+- In `15` out of `20` trials, the `pi` minimum is reached by epoch `150`.
+- On average, the final epoch is slightly worse than the best epoch by about `0.00527` for `mu` and `0.00251` for `pi`.
+
+Interpretation:
+
+- The first `100` epochs matter a great deal; both nuisance curves fall sharply over that range.
+- After about epoch `150`, the gains are small and the average paths start to wobble rather than continue improving monotonically.
+- In this design, `200` epochs does not look clearly too short. If anything, it may be mildly longer than necessary for the nuisance learners, since the average `mu` and `pi` errors are slightly higher at epoch `200` than around their best epochs.
+
+Generated figure:
+
+- `examples/plm/figs/1.4/1.4.1_nuisance_mse_paths.png`

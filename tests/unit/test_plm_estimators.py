@@ -7,7 +7,11 @@ import unittest
 import numpy as np
 
 from simlab.dgp.partial_linear import PartialLinearModelUniformNoiseDGP
-from simlab.estimators.plm_est import PLMDMLEstimator, PLMOracleAIPWEstimator
+from simlab.estimators.plm_est import (
+    PLMDMLEstimator,
+    PLMDMLOracleTrackingEstimator,
+    PLMOracleAIPWEstimator,
+)
 
 
 def zero_mu(x: np.ndarray) -> np.ndarray:
@@ -145,6 +149,40 @@ class PLMEstimatorTests(unittest.TestCase):
 
         self.assertGreater(result.diagnostics["beta_joint"], 0.25)
         self.assertLess(result.diagnostics["beta_joint"], 0.75)
+
+    def test_tracking_estimator_records_oracle_nuisance_paths(self) -> None:
+        dgp = PartialLinearModelUniformNoiseDGP(
+            beta=0.25,
+            func_mu=zero_mu,
+            func_pi=linear_pi,
+            d=2,
+            sigma_u=0.2,
+            sigma_eps=0.1,
+        )
+        sample = dgp.sample(n=12, seed=1234, oracle=True)
+        estimator = PLMDMLOracleTrackingEstimator(
+            name="dml-track",
+            hyper_parameters={
+                "L": 2,
+                "N": 8,
+                "lambda_mu": 1e-4,
+                "lambda_pi": 1e-4,
+                "niter": 3,
+                "lr": 1e-3,
+                "batch_size": 4,
+                "seed": 5,
+            },
+            d=2,
+            device="cpu",
+        )
+
+        result = estimator.fit(sample)
+
+        self.assertEqual(result.diagnostics["epoch_grid"], [0, 1, 2, 3])
+        self.assertEqual(len(result.diagnostics["mu_mse_path"]), 4)
+        self.assertEqual(len(result.diagnostics["pi_mse_path"]), 4)
+        self.assertEqual(result.diagnostics["tracking_split"], "D2")
+        self.assertEqual(result.diagnostics["tracking_n"], 6)
 
 
 if __name__ == "__main__":

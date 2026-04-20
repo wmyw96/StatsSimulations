@@ -120,12 +120,26 @@ class PLMDMLEstimator(Estimator):
         )
 
     def fit(self, data: SampledData) -> EstimateResult:
+        return self._fit_internal(data=data, record_oracle_paths=False)
+
+    def _fit_internal(
+        self,
+        data: SampledData,
+        record_oracle_paths: bool,
+    ) -> EstimateResult:
         x, t, y = _extract_plm_arrays(data)
         d1_x, d1_t, d1_y, d2_x, d2_t, d2_y = _split_plm_data(x, t, y)
 
         x2_tensor = torch.as_tensor(d2_x, dtype=torch.float32, device=self.device)
         t2_tensor = torch.as_tensor(d2_t, dtype=torch.float32, device=self.device)
         y2_tensor = torch.as_tensor(d2_y, dtype=torch.float32, device=self.device)
+        oracle_tracking = None
+        if record_oracle_paths:
+            oracle_tracking = _build_oracle_tracking_state(
+                data=data,
+                n_total=len(x),
+                device=self.device,
+            )
 
         dataset = TensorDataset(x2_tensor, t2_tensor, y2_tensor)
         batch_size = min(self.batch_size, len(dataset))
@@ -144,9 +158,28 @@ class PLMDMLEstimator(Estimator):
         last_pi_loss = float("nan")
         full_joint_loss = float("nan")
         full_pi_loss = float("nan")
+        epoch_grid: list[int] = []
+        mu_mse_path: list[float] = []
+        pi_mse_path: list[float] = []
+
+        if oracle_tracking is not None:
+            self.est_mu.eval()
+            self.est_pi.eval()
+            with torch.no_grad():
+                initial_mu_mse, initial_pi_mse = _compute_oracle_tracking_mse(
+                    est_mu=self.est_mu,
+                    est_pi=self.est_pi,
+                    tracking_x=oracle_tracking["x"],
+                    tracking_mu=oracle_tracking["mu"],
+                    tracking_pi=oracle_tracking["pi"],
+                )
+            epoch_grid.append(0)
+            mu_mse_path.append(initial_mu_mse)
+            pi_mse_path.append(initial_pi_mse)
+
         self.est_mu.train()
         self.est_pi.train()
-        for _ in range(self.niter):
+        for epoch in range(self.niter):
             for batch_x, batch_t, batch_y in loader:
                 self.optimizer.zero_grad()
                 mu_pred = self.est_mu(batch_x)
@@ -177,6 +210,17 @@ class PLMDMLEstimator(Estimator):
                 self.beta.data.fill_(profiled_beta)
                 full_joint_loss = float(torch.mean((self.beta * t2_tensor + mu_d2 - y2_tensor) ** 2).cpu().item())
                 full_pi_loss = float(torch.mean((t2_tensor - pi_d2) ** 2).cpu().item())
+                if oracle_tracking is not None:
+                    tracked_mu_mse, tracked_pi_mse = _compute_oracle_tracking_mse(
+                        est_mu=self.est_mu,
+                        est_pi=self.est_pi,
+                        tracking_x=oracle_tracking["x"],
+                        tracking_mu=oracle_tracking["mu"],
+                        tracking_pi=oracle_tracking["pi"],
+                    )
+                    epoch_grid.append(epoch + 1)
+                    mu_mse_path.append(tracked_mu_mse)
+                    pi_mse_path.append(tracked_pi_mse)
             self.est_mu.train()
             self.est_pi.train()
 
@@ -196,6 +240,16 @@ class PLMDMLEstimator(Estimator):
             "n_d2": len(d2_x),
             "device": str(self.device),
         }
+        if oracle_tracking is not None:
+            diagnostics.update(
+                {
+                    "epoch_grid": epoch_grid,
+                    "mu_mse_path": mu_mse_path,
+                    "pi_mse_path": pi_mse_path,
+                    "tracking_split": "D2",
+                    "tracking_n": int(oracle_tracking["x"].shape[0]),
+                }
+            )
         self.est_params = EstimateResult(
             target="beta",
             estimate=beta_hat,
@@ -272,6 +326,13 @@ class PLMOracleAIPWEstimator(Estimator):
         }
 
 
+class PLMDMLOracleTrackingEstimator(PLMDMLEstimator):
+    """DML estimator variant that records oracle nuisance MSE paths across epochs."""
+
+    def fit(self, data: SampledData) -> EstimateResult:
+        return self._fit_internal(data=data, record_oracle_paths=True)
+
+
 def _resolve_device(device: str) -> torch.device:
     """Resolve and validate a torch device string."""
     resolved = torch.device(device)
@@ -305,6 +366,45 @@ def _profile_beta_from_tensors(t: torch.Tensor, y: torch.Tensor, mu: torch.Tenso
         raise ZeroDivisionError("Cannot profile beta because mean(T^2) is numerically zero.")
     numerator = torch.mean(t * (y - mu))
     return float((numerator / denominator).detach().cpu().item())
+
+
+def _build_oracle_tracking_state(
+    data: SampledData,
+    n_total: int,
+    device: torch.device,
+) -> dict[str, torch.Tensor]:
+    """Build tensors for oracle nuisance tracking on the fitted split."""
+    if "mu_x" not in data.oracle or "pi_x" not in data.oracle:
+        raise KeyError(
+            "Oracle nuisance tracking requires oracle keys 'mu_x' and 'pi_x' in the sampled data."
+        )
+    split = n_total // 2
+    tracking_x = _validate_feature_matrix(data.observed["x"][split:])
+    tracking_mu = _as_float_column(data.oracle["mu_x"], n_total, label="oracle mu_x")[split:]
+    tracking_pi = _as_float_column(data.oracle["pi_x"], n_total, label="oracle pi_x")[split:]
+    return {
+        "x": torch.as_tensor(tracking_x, dtype=torch.float32, device=device),
+        "mu": torch.as_tensor(tracking_mu, dtype=torch.float32, device=device),
+        "pi": torch.as_tensor(tracking_pi, dtype=torch.float32, device=device),
+    }
+
+
+def _compute_oracle_tracking_mse(
+    est_mu: nn.Module,
+    est_pi: nn.Module,
+    tracking_x: torch.Tensor,
+    tracking_mu: torch.Tensor,
+    tracking_pi: torch.Tensor,
+) -> tuple[float, float]:
+    """Compute oracle nuisance MSEs for one evaluation checkpoint."""
+    mu_pred = est_mu(tracking_x)
+    pi_pred = est_pi(tracking_x)
+    mu_mse = torch.mean((mu_pred - tracking_mu) ** 2)
+    pi_mse = torch.mean((pi_pred - tracking_pi) ** 2)
+    return (
+        float(mu_mse.detach().cpu().item()),
+        float(pi_mse.detach().cpu().item()),
+    )
 
 
 def _validate_feature_matrix(X: np.ndarray, expected_dim: int | None = None) -> np.ndarray:
