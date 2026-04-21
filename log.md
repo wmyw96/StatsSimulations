@@ -300,3 +300,8 @@
 
 - Added median summaries for experiment `1.6.1` and a short tail-risk diagnosis to the experiment log.
 - The new analysis shows that the DML median beta MSE is almost monotone across the three `pi_k` settings; the non-monotone mean is mainly driven by a few catastrophic `pi_2` trials with very large beta error.
+
+## 2026-04-21 01:05:00 EDT
+
+- Updated the pi-complexity visualization pipeline so families like `1.6.1` now emit separate mean-based and median-based summary figures, while keeping the old mean filename as a compatibility alias.
+- Extended `PLMEvaluator.query_results()` to support `mode="median"` and added evaluator test coverage for the new aggregation path.

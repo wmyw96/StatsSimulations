@@ -642,17 +642,6 @@ def _plot_family_15_pi_complexity(
         (func_pi_name, FUNCTION_LABELS.get(func_pi_name, func_pi_name))
         for func_pi_name in evaluator.dgp_param_grid["func_pi_name"]
     ]
-    summaries = []
-    for func_pi_name, label in pi_specs:
-        summary = evaluator.query_results(
-            {
-                **fixed_dgp_config,
-                "func_pi_name": func_pi_name,
-            },
-            mode="summary",
-        )
-        summaries.append((label, summary))
-
     x_values = np.arange(len(pi_specs), dtype=float)
     line_specs = [
         ("oracle_aipw", "beta_hat_mse", "Oracle AIPW beta", COLOR_BANK["myred"], "-"),
@@ -663,40 +652,78 @@ def _plot_family_15_pi_complexity(
         ("dml_nn", "pi_mse", "DML pi", COLOR_BANK["mylightblue"], "--"),
     ]
 
-    plt.figure(figsize=(7.4, 4.8))
-    for method_name, metric_key, label, color, linestyle in line_specs:
-        y_values = []
-        valid_x = []
-        for idx, (_, summary) in enumerate(summaries):
-            if method_name not in summary:
-                continue
-            metric_value = float(summary[method_name][metric_key])
-            if metric_value <= 0.0:
-                continue
-            valid_x.append(x_values[idx])
-            y_values.append(metric_value)
-        if valid_x:
-            plt.plot(
-                valid_x,
-                y_values,
-                color=color,
-                linestyle=linestyle,
-                linewidth=2.4,
-                marker="o",
-                label=label,
+    def build_summaries(mode: str) -> list[tuple[str, dict[str, dict[str, float | int]]]]:
+        summaries = []
+        for func_pi_name, label in pi_specs:
+            summary = evaluator.query_results(
+                {
+                    **fixed_dgp_config,
+                    "func_pi_name": func_pi_name,
+                },
+                mode=mode,
             )
+            summaries.append((label, summary))
+        return summaries
 
-    plt.yscale("log")
-    plt.xticks(x_values, [label for label, _ in summaries])
-    plt.xlabel(r"Treatment regression $\pi(x)$")
-    plt.ylabel("Average MSE")
-    plt.title(f"{display_exp_id}: effect of pi complexity")
-    plt.legend()
-    plt.tight_layout()
-    output_path = fig_dir / f"{display_exp_id}_pi_complexity_mse_comparison.png"
-    plt.savefig(output_path, dpi=220)
-    plt.close()
-    print(f"Saved {output_path}")
+    def plot_summaries(
+        summaries: list[tuple[str, dict[str, dict[str, float | int]]]],
+        *,
+        aggregation_label: str,
+        filename_stem: str,
+        legacy_alias: bool = False,
+    ) -> None:
+        plt.figure(figsize=(7.4, 4.8))
+        for method_name, metric_key, label, color, linestyle in line_specs:
+            y_values = []
+            valid_x = []
+            for idx, (_, summary) in enumerate(summaries):
+                if method_name not in summary:
+                    continue
+                metric_value = float(summary[method_name][metric_key])
+                if metric_value <= 0.0:
+                    continue
+                valid_x.append(x_values[idx])
+                y_values.append(metric_value)
+            if valid_x:
+                plt.plot(
+                    valid_x,
+                    y_values,
+                    color=color,
+                    linestyle=linestyle,
+                    linewidth=2.4,
+                    marker="o",
+                    label=label,
+                )
+
+        plt.yscale("log")
+        plt.xticks(x_values, [label for label, _ in summaries])
+        plt.xlabel(r"Treatment regression $\pi(x)$")
+        plt.ylabel(f"{aggregation_label} MSE")
+        plt.title(f"{display_exp_id}: effect of pi complexity ({aggregation_label.lower()})")
+        plt.legend()
+        plt.tight_layout()
+        output_path = fig_dir / f"{display_exp_id}_{filename_stem}.png"
+        plt.savefig(output_path, dpi=220)
+        if legacy_alias:
+            legacy_path = fig_dir / f"{display_exp_id}_pi_complexity_mse_comparison.png"
+            plt.savefig(legacy_path, dpi=220)
+            print(f"Saved {legacy_path}")
+        plt.close()
+        print(f"Saved {output_path}")
+
+    mean_summaries = build_summaries(mode="summary")
+    median_summaries = build_summaries(mode="median")
+    plot_summaries(
+        mean_summaries,
+        aggregation_label="Mean",
+        filename_stem="pi_complexity_mean_mse_comparison",
+        legacy_alias=True,
+    )
+    plot_summaries(
+        median_summaries,
+        aggregation_label="Median",
+        filename_stem="pi_complexity_median_mse_comparison",
+    )
 
 
 if __name__ == "__main__":

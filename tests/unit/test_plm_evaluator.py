@@ -490,6 +490,24 @@ class PLMEvaluatorTests(unittest.TestCase):
             self.assertEqual(summary["dml_nn"]["num_trials"], 2)
             self.assertEqual(summary["oracle_aipw"]["num_trials"], 2)
 
+            median_summary = evaluator.query_results(
+                {
+                    "d": 1,
+                    "func_mu_name": "sin_2pi_first_coordinate",
+                    "func_pi_name": "sin_2pi_first_coordinate",
+                    "beta": 0.0,
+                    "sigma_u": 0.5,
+                    "sigma_eps": 0.5,
+                    "n_test": 32,
+                    "n": 16,
+                },
+                mode="median",
+            )
+            self.assertIn("dml_nn", median_summary)
+            self.assertIn("oracle_aipw", median_summary)
+            self.assertEqual(median_summary["dml_nn"]["num_trials"], 2)
+            self.assertEqual(median_summary["oracle_aipw"]["num_trials"], 2)
+
             first_trial = first_results["trial_results"][0]["estimator_results"][0]
             self.assertIn("mu_pi_product_mean", first_trial)
             self.assertIn("mu_pi_product_true_mean", first_trial)

@@ -110,45 +110,50 @@ class PLMEvaluator(Evaluator):
             if self._config_signature(record["dgp_config"]) == self._config_signature(param_config)
         ]
 
-        if mode != "summary":
-            raise ValueError("Only mode='summary' is currently implemented.")
+        if mode not in {"summary", "median"}:
+            raise ValueError("Only mode='summary' and mode='median' are currently implemented.")
 
-        summary: dict[str, dict[str, float | int]] = {}
+        summary: dict[str, dict[str, list[float] | int]] = {}
         for trial in matching_trials:
             for estimator_record in trial["estimator_results"]:
                 method_name = estimator_record["estimator_name"]
                 method_summary = summary.setdefault(
                     method_name,
                     {
-                        "beta_hat_mse": 0.0,
-                        "beta_init_mse": 0.0,
-                        "mu_mse": 0.0,
-                        "pi_mse": 0.0,
-                        "nuisance_error_corr": 0.0,
-                        "oracle_residual_corr": 0.0,
+                        "beta_hat_mse": [],
+                        "beta_init_mse": [],
+                        "mu_mse": [],
+                        "pi_mse": [],
+                        "nuisance_error_corr": [],
+                        "oracle_residual_corr": [],
                         "num_trials": 0,
                     },
                 )
-                method_summary["beta_hat_mse"] += float(estimator_record["beta_sq_error"])
-                method_summary["beta_init_mse"] += float(estimator_record["beta_init_sq_error"])
-                method_summary["mu_mse"] += float(estimator_record["mu_mse"])
-                method_summary["pi_mse"] += float(estimator_record["pi_mse"])
-                method_summary["nuisance_error_corr"] += float(estimator_record["nuisance_error_corr"])
-                method_summary["oracle_residual_corr"] += float(estimator_record["oracle_residual_corr"])
-                method_summary["num_trials"] += 1
+                method_summary["beta_hat_mse"].append(float(estimator_record["beta_sq_error"]))
+                method_summary["beta_init_mse"].append(float(estimator_record["beta_init_sq_error"]))
+                method_summary["mu_mse"].append(float(estimator_record["mu_mse"]))
+                method_summary["pi_mse"].append(float(estimator_record["pi_mse"]))
+                method_summary["nuisance_error_corr"].append(float(estimator_record["nuisance_error_corr"]))
+                method_summary["oracle_residual_corr"].append(float(estimator_record["oracle_residual_corr"]))
+                method_summary["num_trials"] = int(method_summary["num_trials"]) + 1
 
-        for method_summary in summary.values():
+        reducer = np.mean if mode == "summary" else np.median
+        reduced_summary: dict[str, dict[str, float | int]] = {}
+        for method_name, method_summary in summary.items():
             num_trials = int(method_summary["num_trials"])
             if num_trials == 0:
                 continue
-            method_summary["beta_hat_mse"] /= num_trials
-            method_summary["beta_init_mse"] /= num_trials
-            method_summary["mu_mse"] /= num_trials
-            method_summary["pi_mse"] /= num_trials
-            method_summary["nuisance_error_corr"] /= num_trials
-            method_summary["oracle_residual_corr"] /= num_trials
+            reduced_summary[method_name] = {
+                "beta_hat_mse": float(reducer(method_summary["beta_hat_mse"])),
+                "beta_init_mse": float(reducer(method_summary["beta_init_mse"])),
+                "mu_mse": float(reducer(method_summary["mu_mse"])),
+                "pi_mse": float(reducer(method_summary["pi_mse"])),
+                "nuisance_error_corr": float(reducer(method_summary["nuisance_error_corr"])),
+                "oracle_residual_corr": float(reducer(method_summary["oracle_residual_corr"])),
+                "num_trials": num_trials,
+            }
 
-        return summary
+        return reduced_summary
 
     def _run_single_trial(
         self,

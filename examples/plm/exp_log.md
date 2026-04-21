@@ -1706,4 +1706,5 @@ Main observations:
 
 Generated figures:
 
-- `examples/plm/figs/1.6/1.6.1_pi_complexity_mse_comparison.png`
+- `examples/plm/figs/1.6/1.6.1_pi_complexity_mean_mse_comparison.png`
+- `examples/plm/figs/1.6/1.6.1_pi_complexity_median_mse_comparison.png`
