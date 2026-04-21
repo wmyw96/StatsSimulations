@@ -1852,3 +1852,75 @@ Generated figures:
 
 - `examples/plm/figs/1.6/1.6.3_pi_complexity_mean_mse_comparison.png`
 - `examples/plm/figs/1.6/1.6.3_pi_complexity_median_mse_comparison.png`
+
+## 1.6.4
+
+Experiment `1.6.4`, stored in the simulation artifact `1.6_4`.
+
+### Goal
+
+This experiment keeps the two-dimensional unit-variance protocol but puts both the smooth and rough sine components on the same coordinate. The goal is to see whether making the treatment regression share the same `x_1` rough direction as the outcome regression produces stronger DML instability than the previous two-coordinate design.
+
+### Setting and design
+
+Specific data-generating setting:
+
+- DGP class: `PartialLinearModelUniformNoiseDGP`
+- Covariate dimension: `d = 2`
+- Outcome regression:
+  - `mu(x) = sin(2 x_1) + 0.25 sin(6 x_1)`
+- Treatment regression candidates:
+  - `pi_1(x) = sin(2 x_1) + sin(6 x_1)`
+  - `pi_2(x) = sin(2 x_1) + 2 sin(6 x_1)`
+  - `pi_3(x) = sin(2 x_1) + 3 sin(6 x_1)`
+- Trial-level target coefficient: `beta ~ Unif[-0.5, 0.5]`
+- Treatment noise scale: `sigma_u = sqrt(3)` so that `Var(u) = 1`
+- Outcome noise scale: `sigma_eps = sqrt(3)` so that `Var(eps) = 1`
+- Training sample size: `n = 1024`
+- Test sample size: `n_test = 10000`
+- Number of trials: `10`
+
+Method design:
+
+- Compared methods: Neural DML, paper minimax-debias estimator, and Oracle AIPW
+- Neural network depth: `L = 3`
+- Neural network width: `N = 512`
+- Outcome-network regularization: `lambda_mu = 2e-5`
+- Treatment-network regularization: `lambda_pi = 2e-5`
+- Paper debiasing penalty: `lambda_debias = 1 / (sqrt(n) * log_2(n))` by default on the `D1` split
+- Optimizer: Adam with profiled closed-form updates for the joint least-squares beta on `D2`
+- Learning rate: `lr = 1e-3`
+- Mini-batch size: `batch_size = 1024`
+- Training epochs: `niter = 200`
+- Device: CPU by default unless explicitly changed in the simulation configuration
+
+### Results
+
+Average metrics over `10` trials:
+
+| pi family | Oracle AIPW beta MSE | DML AIPW beta MSE | Minimax debias beta MSE | Joint LSE beta MSE | DML mu MSE | DML pi MSE |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| `pi_1` | 0.002955 | 0.021288 | 0.003623 | 0.002337 | 0.316321 | 0.372796 |
+| `pi_2` | 0.002934 | 0.007331 | 0.002172 | 0.003414 | 0.269126 | 0.262688 |
+| `pi_3` | 0.002925 | 0.006284 | 0.002309 | 0.002580 | 0.267601 | 0.339726 |
+
+Median metrics over `10` trials:
+
+| pi family | Oracle AIPW beta MSE | DML AIPW beta MSE | Minimax debias beta MSE | Joint LSE beta MSE | DML mu MSE | DML pi MSE |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| `pi_1` | 0.001587 | 0.004775 | 0.000666 | 0.001470 | 0.303079 | 0.229942 |
+| `pi_2` | 0.001536 | 0.008130 | 0.001189 | 0.000967 | 0.270605 | 0.234034 |
+| `pi_3` | 0.001487 | 0.003271 | 0.001320 | 0.002476 | 0.187203 | 0.296727 |
+
+Main observations:
+
+- This same-coordinate design does not produce a monotone DML degradation over 10 trials. The mean DML beta MSE changes as `0.021288 -> 0.007331 -> 0.006284`, while the median changes as `0.004775 -> 0.008130 -> 0.003271`.
+- The large mean for `pi_1` is driven by a tail event. The maximum DML beta MSE is about `0.157407` for `pi_1`, compared with about `0.017252` for `pi_2` and `0.017696` for `pi_3`.
+- Treatment nuisance error is also not monotone in mean: `0.372796 -> 0.262688 -> 0.339726`, although the median increases from `pi_1` to `pi_3` after a nearly flat first step: `0.229942 -> 0.234034 -> 0.296727`.
+- The paper minimax-debias estimator again stays close to oracle. Its mean beta MSE is `0.003623 -> 0.002172 -> 0.002309`, while oracle is about `0.0029` in all three configurations.
+- Joint least squares remains small and non-monotone. This suggests that merely putting the rough component on the same coordinate is not enough to create a clean amplitude-driven deterioration under the current network and sample-size regime.
+
+Generated figures:
+
+- `examples/plm/figs/1.6/1.6.4_pi_complexity_mean_mse_comparison.png`
+- `examples/plm/figs/1.6/1.6.4_pi_complexity_median_mse_comparison.png`

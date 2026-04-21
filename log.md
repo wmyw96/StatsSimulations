@@ -317,3 +317,9 @@
 - Added experiment `1.6.3`, a two-dimensional unit-variance PLM family with `mu(x) = sin(2 x_1) + 0.25 sin(6 x_2)` and `pi_k(x) = sin(2 x_1) + (k+1) sin(6 x_2)` for `k in {0,1,2}`.
 - Extended the exact-id evaluator tests for `1.6.3`, ran the full `10`-trial comparison with DML, paper minimax-debias, and oracle estimators, and generated separate mean and median figures under `examples/plm/figs/1.6/`.
 - Updated the experiment log with mean/median tables; DML AIPW worsens once the second-coordinate treatment amplitude increases, while the paper minimax-debias estimator remains much closer to oracle in this run.
+
+## 2026-04-21 10:13:00 EDT
+
+- Added experiment `1.6.4`, a two-dimensional unit-variance PLM family with `mu(x) = sin(2 x_1) + 0.25 sin(6 x_1)` and `pi_k(x) = sin(2 x_1) + (k+1) sin(6 x_1)` for `k in {0,1,2}`.
+- Extended the exact-id evaluator tests for `1.6.4`, ran the full `10`-trial comparison with DML, paper minimax-debias, and oracle estimators, and generated separate mean and median figures under `examples/plm/figs/1.6/`.
+- Updated the experiment log with mean/median tables; this same-coordinate design does not produce monotone DML degradation at 10 trials, but the paper minimax-debias estimator remains close to oracle.
