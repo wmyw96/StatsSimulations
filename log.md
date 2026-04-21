@@ -290,3 +290,8 @@
 - Included the paper minimax-debias estimator in the `1.6.1` comparison set, extended the experiment registry/tests for the new exact id, and reused the existing pi-complexity plotting pipeline for the new family.
 - Fixed a PLM evaluator resume bug so a stale larger `n_trials` header from an interrupted run can now be lowered back to the current target when the completed trial counts support it.
 - Ran the full `10`-trial first-pass `1.6.1` experiment and generated `examples/plm/figs/1.6/1.6.1_pi_complexity_mse_comparison.png`; in this design the treatment nuisance gets progressively harder, the joint LSE beta degrades monotonically, and the minimax-debias beta estimate is markedly more stable than the plain DML AIPW beta.
+
+## 2026-04-21 00:35:00 EDT
+
+- Extended experiment `1.6.1` from `10` to `50` trials by resuming the saved artifact, regenerated the `examples/plm/figs/1.6/1.6.1_pi_complexity_mse_comparison.png` figure, and refreshed the experiment report with the new averages.
+- At the 50-trial scale, the treatment nuisance difficulty still grows clearly across the three `pi_k` settings, the joint LSE beta estimate degrades monotonically, and the paper minimax-debias beta estimate remains substantially more stable than the plain DML AIPW beta.

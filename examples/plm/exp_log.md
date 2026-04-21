@@ -799,7 +799,7 @@ Specific data-generating setting:
 - Training sample size: `n = 1024`
 - Validation sample size: `n_val = 1024`
 - Test sample size: `n_test = 10000`
-- Number of trials: `10`
+- Number of trials: `50`
 
 Method design:
 
@@ -1658,7 +1658,7 @@ Specific data-generating setting:
 - Outcome noise scale: `sigma_eps = sqrt(3)` so that `Var(eps) = 1`
 - Training sample size: `n = 1024`
 - Test sample size: `n_test = 10000`
-- Number of trials: `10`
+- Number of trials: `50`
 
 Method design:
 
@@ -1676,20 +1676,20 @@ Method design:
 
 ### Results
 
-Average metrics over `10` trials:
+Average metrics over `50` trials:
 
 | pi family | Oracle AIPW beta MSE | DML AIPW beta MSE | Minimax debias beta MSE | Joint LSE beta MSE | DML mu MSE | DML pi MSE |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| `pi_1` | 0.003034 | 0.007896 | 0.004670 | 0.007128 | 0.314048 | 0.282883 |
-| `pi_2` | 0.003066 | 0.064184 | 0.008030 | 0.009970 | 0.388122 | 0.604707 |
-| `pi_3` | 0.003100 | 0.016565 | 0.009358 | 0.015698 | 0.397304 | 0.782455 |
+| `pi_1` | 0.002032 | 0.009927 | 0.004374 | 0.008302 | 0.346520 | 0.329056 |
+| `pi_2` | 0.002043 | 0.059280 | 0.006881 | 0.012164 | 0.357995 | 0.613800 |
+| `pi_3` | 0.002055 | 0.012831 | 0.008143 | 0.013810 | 0.422049 | 0.877659 |
 
 Main observations:
 
-- This family does make the treatment nuisance progressively harder: DML `pi` MSE rises clearly from `0.282883` to `0.604707` to `0.782455`.
-- The joint least-squares beta estimate also degrades monotonically across the same sequence: `0.007128 -> 0.009970 -> 0.015698`.
-- The plain DML AIPW beta estimate is much less stable. It is already above oracle at `pi_1`, spikes sharply at `pi_2`, and then partially recovers at `pi_3`: `0.007896 -> 0.064184 -> 0.016565`.
-- The paper minimax-debias estimator is noticeably more stable than the plain DML AIPW beta in this family. Its beta MSE only moves from `0.004670` to `0.008030` to `0.009358`, and it beats the plain DML AIPW beta in all three settings.
+- This family still makes the treatment nuisance progressively harder at the 50-trial scale: DML `pi` MSE rises from `0.329056` to `0.613800` to `0.877659`.
+- The joint least-squares beta estimate now shows a clean monotone degradation as well: `0.008302 -> 0.012164 -> 0.013810`.
+- The plain DML AIPW beta estimate remains the least stable of the three beta procedures. It is worst at the middle setting and remains much larger than oracle throughout: `0.009927 -> 0.059280 -> 0.012831`.
+- The paper minimax-debias estimator remains substantially more stable than plain DML AIPW after averaging over 50 trials. Its beta MSE only moves from `0.004374` to `0.006881` to `0.008143`, and it beats the plain DML AIPW beta in all three settings.
 - So `1.6.1` is a more informative stress test than many of the earlier `1.5` families. Increasing the rough second-coordinate component in `pi(x)` does make nuisance estimation harder and eventually worsens the simple joint LSE beta fit, while the minimax-debias estimator appears substantially more robust than the baseline DML AIPW estimate in this design.
 
 Generated figures:
