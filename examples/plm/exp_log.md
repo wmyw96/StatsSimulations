@@ -1996,3 +1996,78 @@ Generated figures:
 
 - `examples/plm/figs/1.6/1.6.5_pi_complexity_mean_mse_comparison.png`
 - `examples/plm/figs/1.6/1.6.5_pi_complexity_median_mse_comparison.png`
+
+## 1.6.6
+
+Experiment `1.6.6`, stored in the simulation artifact `1.6_6`.
+
+### Goal
+
+This experiment uses a shared two-frequency signal with a lower-frequency component and a smaller high-frequency component. The goal is to test whether amplifying a treatment regression that is exactly aligned with the outcome regression, but contains both `sin(5 x_1)` and `sin(20 x_1)`, produces a clear increase in DML beta error.
+
+### Setting and design
+
+Specific data-generating setting:
+
+- DGP class: `PartialLinearModelUniformNoiseDGP`
+- Covariate dimension: `d = 2`
+- Shared base signal:
+  - `g(x) = 0.25 sin(5 x_1) + 0.125 sin(20 x_1)`
+- Outcome regression:
+  - `mu(x) = g(x)`
+- Treatment regression candidates:
+  - `pi_1(x) = 4 * 0.5 * g(x)`
+  - `pi_2(x) = 4 * 1.0 * g(x)`
+  - `pi_3(x) = 4 * 2.0 * g(x)`
+- Trial-level target coefficient: `beta ~ Unif[-0.5, 0.5]`
+- Treatment noise scale: `sigma_u = sqrt(3)` so that `Var(u) = 1`
+- Outcome noise scale: `sigma_eps = sqrt(3)` so that `Var(eps) = 1`
+- Training sample size: `n = 1024`
+- Test sample size: `n_test = 10000`
+- Number of trials: `10`
+
+Method design:
+
+- Compared methods: Neural DML, paper minimax-debias estimator, and Oracle AIPW
+- Neural network depth: `L = 3`
+- Neural network width: `N = 512`
+- Outcome-network regularization: `lambda_mu = 2e-5`
+- Treatment-network regularization: `lambda_pi = 2e-5`
+- Paper debiasing penalty: `lambda_debias = 1 / (sqrt(n) * log_2(n))` by default on the `D1` split
+- Optimizer: Adam with profiled closed-form updates for the joint least-squares beta on `D2`
+- Learning rate: `lr = 1e-3`
+- Mini-batch size: `batch_size = 1024`
+- Training epochs: `niter = 200`
+- Device: CPU by default unless explicitly changed in the simulation configuration
+
+### Results
+
+Average metrics over `10` trials:
+
+| pi family | Oracle AIPW beta MSE | DML AIPW beta MSE | Minimax debias beta MSE | Joint LSE beta MSE | DML mu MSE | DML pi MSE |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| `pi_1` | 0.003055 | 0.004863 | 0.002738 | 0.001591 | 0.330841 | 0.246151 |
+| `pi_2` | 0.003101 | 0.005385 | 0.003045 | 0.002086 | 0.279957 | 0.446045 |
+| `pi_3` | 0.003203 | 0.005056 | 0.003251 | 0.002944 | 0.265101 | 0.598324 |
+
+Median metrics over `10` trials:
+
+| pi family | Oracle AIPW beta MSE | DML AIPW beta MSE | Minimax debias beta MSE | Joint LSE beta MSE | DML mu MSE | DML pi MSE |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| `pi_1` | 0.001585 | 0.002511 | 0.000987 | 0.000684 | 0.267868 | 0.237757 |
+| `pi_2` | 0.001582 | 0.003493 | 0.001611 | 0.001380 | 0.250830 | 0.301065 |
+| `pi_3` | 0.001578 | 0.002286 | 0.001916 | 0.001975 | 0.248944 | 0.544050 |
+
+Main observations:
+
+- The treatment nuisance gets substantially harder as the treatment scaling increases. Mean DML `pi` MSE changes as `0.246151 -> 0.446045 -> 0.598324`, and median DML `pi` MSE changes as `0.237757 -> 0.301065 -> 0.544050`.
+- The final DML AIPW beta MSE does not increase monotonically over 10 trials. The mean changes as `0.004863 -> 0.005385 -> 0.005056`, while the median changes as `0.002511 -> 0.003493 -> 0.002286`.
+- The DML right tail is also similar across the three settings. The maximum DML beta MSE is about `0.019384`, `0.019500`, and `0.017222` for `pi_1`, `pi_2`, and `pi_3`, respectively.
+- The joint least-squares beta estimate worsens monotonically in both mean and median, moving from `0.001591` to `0.002944` in mean and from `0.000684` to `0.001975` in median.
+- The paper minimax-debias estimator remains close to oracle. Its mean beta MSE is `0.002738 -> 0.003045 -> 0.003251`, while oracle is about `0.0031`.
+- Compared with `1.6.5`, adding the lower-frequency component and using this two-frequency base makes the treatment regression harder to learn, but it does not translate into a strong monotone DML AIPW beta deterioration at this 10-trial scale.
+
+Generated figures:
+
+- `examples/plm/figs/1.6/1.6.6_pi_complexity_mean_mse_comparison.png`
+- `examples/plm/figs/1.6/1.6.6_pi_complexity_median_mse_comparison.png`

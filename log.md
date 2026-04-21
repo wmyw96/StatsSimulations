@@ -329,3 +329,9 @@
 - Added experiment `1.6.5`, a two-dimensional unit-variance PLM family with `mu(x) = 0.25 sin(6 x_1)` and `pi_k(x) = (k+1) sin(6 x_1)` for `k in {0,1,2}`.
 - Extended the exact-id evaluator tests for `1.6.5`, ran the full `10`-trial comparison with DML, paper minimax-debias, and oracle estimators, and generated separate mean and median figures under `examples/plm/figs/1.6/`.
 - Updated the experiment log with mean/median tables; this rough-only design gives a cleaner monotone increase in DML beta MSE and nuisance MSEs as the treatment amplitude grows.
+
+## 2026-04-21 12:07:00 EDT
+
+- Added experiment `1.6.6`, a two-dimensional unit-variance PLM family with shared base signal `g(x) = 0.25 sin(5 x_1) + 0.125 sin(20 x_1)`, `mu(x) = g(x)`, and `pi_k(x) = 4k g(x)` for `k in {0.5, 1, 2}`.
+- Extended the exact-id evaluator tests for `1.6.6`, ran the full `10`-trial comparison with DML, paper minimax-debias, and oracle estimators, and generated separate mean and median figures under `examples/plm/figs/1.6/`.
+- Updated the experiment log with mean/median tables; treatment nuisance MSE grows strongly with the scaling, but DML AIPW beta MSE remains fairly flat and non-monotone at this 10-trial scale.
