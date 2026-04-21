@@ -295,3 +295,8 @@
 
 - Extended experiment `1.6.1` from `10` to `50` trials by resuming the saved artifact, regenerated the `examples/plm/figs/1.6/1.6.1_pi_complexity_mse_comparison.png` figure, and refreshed the experiment report with the new averages.
 - At the 50-trial scale, the treatment nuisance difficulty still grows clearly across the three `pi_k` settings, the joint LSE beta estimate degrades monotonically, and the paper minimax-debias beta estimate remains substantially more stable than the plain DML AIPW beta.
+
+## 2026-04-21 00:50:00 EDT
+
+- Added median summaries for experiment `1.6.1` and a short tail-risk diagnosis to the experiment log.
+- The new analysis shows that the DML median beta MSE is almost monotone across the three `pi_k` settings; the non-monotone mean is mainly driven by a few catastrophic `pi_2` trials with very large beta error.

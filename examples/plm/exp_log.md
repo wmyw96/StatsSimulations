@@ -1684,12 +1684,24 @@ Average metrics over `50` trials:
 | `pi_2` | 0.002043 | 0.059280 | 0.006881 | 0.012164 | 0.357995 | 0.613800 |
 | `pi_3` | 0.002055 | 0.012831 | 0.008143 | 0.013810 | 0.422049 | 0.877659 |
 
+Median metrics over `50` trials:
+
+| pi family | Oracle AIPW beta MSE | DML AIPW beta MSE | Minimax debias beta MSE | Joint LSE beta MSE | DML mu MSE | DML pi MSE |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| `pi_1` | 0.000969 | 0.004912 | 0.002613 | 0.005557 | 0.284516 | 0.281471 |
+| `pi_2` | 0.000961 | 0.006426 | 0.004580 | 0.009714 | 0.302220 | 0.461521 |
+| `pi_3` | 0.000946 | 0.006774 | 0.005959 | 0.012644 | 0.341615 | 0.744838 |
+
 Main observations:
 
 - This family still makes the treatment nuisance progressively harder at the 50-trial scale: DML `pi` MSE rises from `0.329056` to `0.613800` to `0.877659`.
 - The joint least-squares beta estimate now shows a clean monotone degradation as well: `0.008302 -> 0.012164 -> 0.013810`.
 - The plain DML AIPW beta estimate remains the least stable of the three beta procedures. It is worst at the middle setting and remains much larger than oracle throughout: `0.009927 -> 0.059280 -> 0.012831`.
 - The paper minimax-debias estimator remains substantially more stable than plain DML AIPW after averaging over 50 trials. Its beta MSE only moves from `0.004374` to `0.006881` to `0.008143`, and it beats the plain DML AIPW beta in all three settings.
+- The medians tell a cleaner story than the means. The DML median beta MSE is almost monotone: `0.004912 -> 0.006426 -> 0.006774`. So the non-monotone mean is mainly a tail effect rather than a shift in the typical trial.
+- The middle setting `pi_2` has a much heavier right tail than `pi_3`. For DML beta MSE, the `pi_2` maximum is about `1.92` and the 95th percentile is about `0.090`, while for `pi_3` the maximum is only about `0.049` and the 95th percentile is about `0.040`.
+- In the saved trial records, the DML beta error is also much more tightly tied to treatment-nuisance error in the `pi_2` case than in the other two settings: the empirical correlation between DML beta MSE and DML `pi` MSE is about `0.92` for `pi_2`, versus about `0.26` for `pi_1` and `0.19` for `pi_3`.
+- So the current evidence suggests that `pi_2` is not harder in a typical-case sense than `pi_3`; instead, it creates occasional catastrophic DML failures that inflate the mean. We did not save the AIPW denominator itself, so the next diagnostic would be to record that denominator and check whether those `pi_2` outliers coincide with unusually unstable score normalization.
 - So `1.6.1` is a more informative stress test than many of the earlier `1.5` families. Increasing the rough second-coordinate component in `pi(x)` does make nuisance estimation harder and eventually worsens the simple joint LSE beta fit, while the minimax-debias estimator appears substantially more robust than the baseline DML AIPW estimate in this design.
 
 Generated figures:
