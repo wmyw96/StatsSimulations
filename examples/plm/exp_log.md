@@ -2071,3 +2071,79 @@ Generated figures:
 
 - `examples/plm/figs/1.6/1.6.6_pi_complexity_mean_mse_comparison.png`
 - `examples/plm/figs/1.6/1.6.6_pi_complexity_median_mse_comparison.png`
+
+## 1.6.7
+
+Experiment `1.6.7`, stored in the simulation artifact `1.6_7`.
+
+### Goal
+
+This experiment uses a two-dimensional shared signal `eta(x)` as both the outcome regression and the treatment-regression direction. The goal is to test whether scaling a treatment regression that is exactly aligned with the full outcome regression creates a stronger instability than the previous partially aligned two-frequency designs.
+
+### Setting and design
+
+Specific data-generating setting:
+
+- DGP class: `PartialLinearModelUniformNoiseDGP`
+- Covariate dimension: `d = 2`
+- Shared signal:
+  - `eta(x) = sin(x_1) + 0.25 sin(5 x_2) + 0.05 sin(20 x_2)`
+- Outcome regression:
+  - `mu(x) = eta(x)`
+- Treatment regression candidates:
+  - `pi_1(x) = 4 * 0.5 * eta(x)`
+  - `pi_2(x) = 4 * 1.0 * eta(x)`
+  - `pi_3(x) = 4 * 2.0 * eta(x)`
+- Trial-level target coefficient: `beta ~ Unif[-0.5, 0.5]`
+- Treatment noise scale: `sigma_u = sqrt(3)` so that `Var(u) = 1`
+- Outcome noise scale: `sigma_eps = sqrt(3)` so that `Var(eps) = 1`
+- Training sample size: `n = 1024`
+- Test sample size: `n_test = 10000`
+- Number of trials: `10`
+
+Method design:
+
+- Compared methods: Neural DML, paper minimax-debias estimator, and Oracle AIPW
+- Neural network depth: `L = 3`
+- Neural network width: `N = 512`
+- Outcome-network regularization: `lambda_mu = 2e-5`
+- Treatment-network regularization: `lambda_pi = 2e-5`
+- Paper debiasing penalty: `lambda_debias = 1 / (sqrt(n) * log_2(n))` by default on the `D1` split
+- Optimizer: Adam with profiled closed-form updates for the joint least-squares beta on `D2`
+- Learning rate: `lr = 1e-3`
+- Mini-batch size: `batch_size = 1024`
+- Training epochs: `niter = 200`
+- Device: CPU by default unless explicitly changed in the simulation configuration
+
+### Results
+
+Average metrics over `10` trials:
+
+| pi family | Oracle AIPW beta MSE | DML AIPW beta MSE | Minimax debias beta MSE | Joint LSE beta MSE | DML mu MSE | DML pi MSE |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| `pi_1` | 0.003036 | 0.004447 | 0.004072 | 0.011173 | 0.295831 | 0.264498 |
+| `pi_2` | 0.003177 | 132.099823 | 9.374499 | 161.501047 | 1330.864284 | 0.281679 |
+| `pi_3` | 0.003929 | 330.959098 | 8.891743 | 263.952510 | 6103.634289 | 0.321006 |
+
+Median metrics over `10` trials:
+
+| pi family | Oracle AIPW beta MSE | DML AIPW beta MSE | Minimax debias beta MSE | Joint LSE beta MSE | DML mu MSE | DML pi MSE |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| `pi_1` | 0.001660 | 0.002225 | 0.001054 | 0.003631 | 0.260949 | 0.205777 |
+| `pi_2` | 0.001745 | 11.038864 | 5.172272 | 95.723028 | 668.882169 | 0.230639 |
+| `pi_3` | 0.001963 | 11.298917 | 5.463956 | 232.718997 | 5285.603231 | 0.332364 |
+
+Main observations:
+
+- This design creates a sharp instability once the treatment regression is scaled to `4 eta(x)` or `8 eta(x)`. The mean DML AIPW beta MSE jumps from `0.004447` at `pi_1` to `132.099823` at `pi_2` and `330.959098` at `pi_3`.
+- The median shows that this is not only a single outlier. Median DML AIPW beta MSE moves from `0.002225` to `11.038864` and `11.298917`.
+- The joint least-squares beta estimate is the most visibly unstable component. Mean joint-LSE beta MSE changes as `0.011173 -> 161.501047 -> 263.952510`, and median joint-LSE beta MSE changes as `0.003631 -> 95.723028 -> 232.718997`.
+- The DML outcome nuisance estimate also collapses in the high-scaling regimes. Mean `mu` MSE changes as `0.295831 -> 1330.864284 -> 6103.634289`, while the treatment nuisance MSE remains modest: `0.264498 -> 0.281679 -> 0.321006`.
+- The paper minimax-debias estimator is more stable than plain DML AIPW in the high-scaling settings, but it is still far from oracle. Its mean beta MSE is `0.004072 -> 9.374499 -> 8.891743`.
+- The oracle AIPW estimator remains stable throughout, with beta MSE around `0.003`. This suggests that the failure is coming from the learned nuisance/joint-LSE stage rather than from the oracle score itself.
+- The practical interpretation is that exactly aligning `mu` and the scaled systematic treatment component can make the neural joint least-squares decomposition extremely ill-conditioned. A useful next diagnostic would be to record the DML denominator and the learned joint-LSE beta directly for these trials.
+
+Generated figures:
+
+- `examples/plm/figs/1.6/1.6.7_pi_complexity_mean_mse_comparison.png`
+- `examples/plm/figs/1.6/1.6.7_pi_complexity_median_mse_comparison.png`

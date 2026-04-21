@@ -335,3 +335,9 @@
 - Added experiment `1.6.6`, a two-dimensional unit-variance PLM family with shared base signal `g(x) = 0.25 sin(5 x_1) + 0.125 sin(20 x_1)`, `mu(x) = g(x)`, and `pi_k(x) = 4k g(x)` for `k in {0.5, 1, 2}`.
 - Extended the exact-id evaluator tests for `1.6.6`, ran the full `10`-trial comparison with DML, paper minimax-debias, and oracle estimators, and generated separate mean and median figures under `examples/plm/figs/1.6/`.
 - Updated the experiment log with mean/median tables; treatment nuisance MSE grows strongly with the scaling, but DML AIPW beta MSE remains fairly flat and non-monotone at this 10-trial scale.
+
+## 2026-04-21 12:26:00 EDT
+
+- Added experiment `1.6.7`, a two-dimensional unit-variance PLM family with `eta(x) = sin(x_1) + 0.25 sin(5 x_2) + 0.05 sin(20 x_2)`, `mu(x) = eta(x)`, and `pi_k(x) = 4k eta(x)` for `k in {0.5, 1, 2}`.
+- Extended the exact-id evaluator tests for `1.6.7`, ran the full `10`-trial comparison with DML, paper minimax-debias, and oracle estimators, and generated separate mean and median figures under `examples/plm/figs/1.6/`.
+- Updated the experiment log with mean/median tables; the high-scaling settings produce catastrophic DML and joint-LSE instability while oracle AIPW remains stable.
