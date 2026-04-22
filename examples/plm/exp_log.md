@@ -2381,3 +2381,78 @@ Generated figures:
 
 - `examples/plm/figs/1.6/1.6.10_pi_complexity_requested_mse.png`
 - `examples/plm/figs/1.6/1.6.10_beta_grouped_bias_variance_hist.png`
+
+## 1.6.11
+
+Experiment `1.6.11`, stored in the simulation artifact `1.6_11`.
+
+### Goal
+
+This experiment increases the covariate dimension to `d = 10` and doubles the training sample size to `n = 2048`. The goal is to test whether the residual-only treatment design remains stable when the outcome and treatment nuisance functions include a weak high-frequency tail over eight additional coordinates.
+
+### Setting and design
+
+Specific data-generating setting:
+
+- DGP class: `PartialLinearModelUniformNoiseDGP`
+- Covariate dimension: `d = 10`
+- Shared signal:
+  - `eta(x) = sin(x_1) + 0.25 sin(4 x_2) + 0.05 sin(11 x_2) + sum_{j=3}^{10} 0.005 sin(30 x_j)`
+- Outcome regression:
+  - `mu(x) = eta(x)`
+- Treatment regression candidates:
+  - `pi_1(x) = 4 * 1 * (eta(x) - sin(x_1))`
+  - `pi_2(x) = 4 * 2 * (eta(x) - sin(x_1))`
+  - `pi_3(x) = 4 * 3 * (eta(x) - sin(x_1))`
+- Trial-level target coefficient: `beta in {-0.5, 0, 0.5}`, balanced by trial seed with `20` trials per beta value for each treatment-regression candidate
+- Treatment noise scale: `sigma_u = sqrt(3)` so that `Var(u) = 1`
+- Outcome noise scale: `sigma_eps = sqrt(3)` so that `Var(eps) = 1`
+- Training sample size: `n = 2048`
+- Test sample size: `n_test = 10000`
+- Number of trials: `60` per treatment-regression candidate
+
+Method design:
+
+- Compared methods: Neural DML, paper minimax-debias estimator, and Oracle AIPW
+- Neural network depth: `L = 3`
+- Neural network width: `N = 512`
+- Outcome-network regularization: `lambda_mu = 2e-5`
+- Treatment-network regularization: `lambda_pi = 2e-5`
+- Paper debiasing penalty: `lambda_debias = 1 / (sqrt(n) * log_2(n))` by default on the `D1` split
+- Optimizer: Adam with profiled closed-form updates for the joint least-squares beta on `D2`
+- Learning rate: `lr = 1e-3`
+- Mini-batch size: `batch_size = 2048`
+- Training epochs: `niter = 200`
+- Device: CPU by default unless explicitly changed in the simulation configuration
+
+### Results
+
+Average metrics over `60` trials for each treatment-regression candidate:
+
+| pi family | Oracle AIPW beta MSE | DML AIPW beta MSE | Minimax debias beta MSE | DML mu MSE | DML pi MSE |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| `pi_1` | 0.000949 | 0.002390 | 0.068152 | 0.426297 | 0.682598 |
+| `pi_2` | 0.000959 | 0.002732 | 0.095625 | 0.430358 | 1.243759 |
+| `pi_3` | 0.000972 | 0.002346 | 0.118819 | 0.434224 | 1.835003 |
+
+Grouped bias-variance decomposition over the balanced beta support:
+
+| pi family | DML mean squared bias | DML mean variance | Minimax mean squared bias | Minimax mean variance |
+| --- | ---: | ---: | ---: | ---: |
+| `pi_1` | 0.000938 | 0.001452 | 0.067998 | 0.000155 |
+| `pi_2` | 0.001960 | 0.000772 | 0.095586 | 0.000039 |
+| `pi_3` | 0.001881 | 0.000465 | 0.118791 | 0.000028 |
+
+Main observations:
+
+- The DML treatment nuisance error increases strongly with residual-treatment scaling: mean `pi` MSE changes as `0.682598 -> 1.243759 -> 1.835003`.
+- DML AIPW beta MSE stays small and relatively flat in this run: `0.002390 -> 0.002732 -> 0.002346`, despite the increasing treatment nuisance error.
+- The paper minimax-debias estimator performs poorly in this high-dimensional setting under the current hyper-parameters. Its beta MSE increases as `0.068152 -> 0.095625 -> 0.118819`.
+- The minimax-debias error is almost entirely squared bias rather than variance. Grouped squared bias is `0.067998 -> 0.095586 -> 0.118791`, while grouped variance is below `0.0002`.
+- Oracle AIPW beta MSE is lower than in the previous `n = 1024` runs, around `0.001`, as expected from the larger sample size.
+- This run suggests that the current minimax-debias hyper-parameters or optimization setup may not transfer cleanly to the `d = 10`, `n = 2048` nuisance family, even though DML remains stable.
+
+Generated figures:
+
+- `examples/plm/figs/1.6/1.6.11_pi_complexity_requested_mse.png`
+- `examples/plm/figs/1.6/1.6.11_beta_grouped_bias_variance_hist.png`

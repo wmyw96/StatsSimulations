@@ -365,3 +365,9 @@
 - Added experiment `1.6.10`, reusing the residual-only `1.6.8` treatment family with balanced `beta in {-0.5, 0, 0.5}` for grouped bias-variance analysis.
 - Ran the full `60`-trial-per-treatment-setting simulation, verified balanced beta counts, and generated the requested MSE and grouped bias/variance figures under `examples/plm/figs/1.6/`.
 - Updated `examples/plm/exp_log.md` with the `1.6.10` numerical tables and main observations from the saved simulation artifact.
+
+## 2026-04-21 21:08:41 EDT
+
+- Added experiment `1.6.11`, a ten-dimensional PLM with `n = 2048`, `batch_size = 2048`, balanced `beta in {-0.5, 0, 0.5}`, and residual-only treatment regressions `pi_k(x) = 4k(eta(x) - sin(x_1))`.
+- Ran the full `60`-trial-per-treatment-setting simulation, verified balanced beta counts, and generated the requested MSE and grouped beta bias/variance figures.
+- Updated `examples/plm/exp_log.md` with the `1.6.11` results, including the observed high bias of the current minimax-debias estimator in this high-dimensional setting.

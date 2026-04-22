@@ -642,7 +642,7 @@ def _plot_family_15_pi_complexity(
         (func_pi_name, FUNCTION_LABELS.get(func_pi_name, func_pi_name))
         for func_pi_name in evaluator.dgp_param_grid["func_pi_name"]
     ]
-    if display_exp_id in {"1.6.9", "1.6.10"}:
+    if display_exp_id in {"1.6.9", "1.6.10", "1.6.11"}:
         _plot_family_169_mse_and_grouped_bias_variance(
             display_exp_id=display_exp_id,
             fig_dir=fig_dir,
