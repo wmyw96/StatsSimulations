@@ -382,3 +382,9 @@
 
 - Added a unified `1.6.12` visualization that combines oracle beta MSE, DML nuisance MSE, and beta-MSE boxplots for DML and minimax debias in one log-scale figure.
 - Regenerated the `1.6.12` visualization outputs and recorded the new unified figure path in `examples/plm/exp_log.md`.
+
+## 2026-04-21 22:18:35 EDT
+
+- Added experiment `1.6.13`, a two-dimensional PLM with `n = 1024`, `batch_size = 1024`, `beta ~ Unif[-0.5, 0.5]`, and treatment regressions `sin(x_2) + k sin(5x_2) + 0.05 sin(20x_2)`.
+- Ran the requested `10` trials per treatment-regression setting and generated standard beta decomposition figures plus the unified nuisance/beta-MSE boxplot.
+- Updated `examples/plm/exp_log.md` with the `1.6.13` numerical results and comparison notes against `1.6.12`.

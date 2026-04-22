@@ -762,7 +762,7 @@ def _plot_family_15_pi_complexity(
         title_suffix="variance of beta estimation error",
         filename_stem="pi_complexity_beta_variance",
     )
-    if display_exp_id == "1.6.12":
+    if display_exp_id in {"1.6.12", "1.6.13"}:
         _plot_family_1612_unified_boxplot(
             display_exp_id=display_exp_id,
             fig_dir=fig_dir,
