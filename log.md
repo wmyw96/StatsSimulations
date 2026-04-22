@@ -411,3 +411,9 @@
 - Updated the `1.6_13_tracking` visualization to overlay the three treatment-regression settings in one validation-only figure, using red for `pi`, blue for `mu`, and increasing alpha for larger `k`.
 - Regenerated `examples/plm/figs/1.6/1.6.13_nuisance_validation_overlay_paths.png` from the existing tracking artifact and kept the prior path as a compatibility alias.
 - Refreshed the experiment log to describe the validation-only overlay convention.
+
+## 2026-04-22 16:31:35 EDT
+
+- Added and ran the `1.6_14_tracking` nuisance-path diagnostic with the `1.6.14` DGP, validation sample size `2048`, and `10` trials per treatment-regression setting.
+- Generated `examples/plm/figs/1.6/1.6.14_nuisance_validation_overlay_paths.png` using the one-panel validation-only overlay convention.
+- Updated `examples/plm/exp_log.md` with the `1.6.14` validation nuisance-path summary.

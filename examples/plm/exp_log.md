@@ -2708,3 +2708,28 @@ Generated figures:
 - `examples/plm/figs/1.6/1.6.14_pi_complexity_beta_bias_sq.png`
 - `examples/plm/figs/1.6/1.6.14_pi_complexity_beta_variance.png`
 - `examples/plm/figs/1.6/1.6.14_unified_mse_mean_curve.png`
+
+### Nuisance-learning path diagnostic
+
+Diagnostic artifact: `simulation_results/plm/1.6_14_tracking.json`.
+
+This follow-up uses the same validation-only overlay convention as the `1.6.13` diagnostic. The neural DML tracking estimator records oracle nuisance MSE paths on `D2` and on an independent validation sample of size `2048`; the summary figure uses the validation paths only. Red curves represent `pi`, blue curves represent `mu`, and the alpha level encodes the treatment amplitude, with alpha equal to `1` for the largest `k`.
+
+Average validation oracle nuisance MSE at epoch `0` and epoch `200`:
+
+| pi family | Mu MSE @ 0 | Mu MSE @ 200 | Pi MSE @ 0 | Pi MSE @ 200 |
+| --- | ---: | ---: | ---: | ---: |
+| `pi_1` | 0.822581 | 0.361566 | 0.820306 | 0.425776 |
+| `pi_2` | 0.822581 | 0.283758 | 1.197750 | 0.882550 |
+| `pi_4` | 0.822581 | 0.340963 | 2.736380 | 0.357894 |
+
+Main observations:
+
+- The initial validation `pi` MSE increases sharply with treatment amplitude, as expected from the larger treatment regression signal.
+- By epoch `200`, the `pi_2` treatment learner remains the hardest in validation MSE, matching the non-monotone nuisance behavior observed in the standard `1.6.14` summary.
+- The validation `mu` MSE remains highest for `pi_1` and lowest for `pi_2`, so the outcome learner's path is also not monotone in the treatment amplitude.
+
+Generated diagnostic figures:
+
+- `examples/plm/figs/1.6/1.6.14_nuisance_validation_overlay_paths.png`
+- `examples/plm/figs/1.6/1.6.14_nuisance_in_out_average_paths.png`
