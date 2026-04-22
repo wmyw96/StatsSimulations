@@ -2613,7 +2613,7 @@ Generated figures:
 
 Diagnostic artifact: `simulation_results/plm/1.6_13_tracking.json`.
 
-This follow-up tracks the oracle nuisance MSE paths for the neural DML nuisance learners in the same `1.6.13` DGP. The estimator records both the in-sample path on `D2` and the out-of-sample path on an independent validation sample of size `2048`. The figure averages the paths over `10` trials per treatment-regression candidate. Blue curves represent `pi`, red curves represent `mu`, solid high-opacity curves represent `D2`, and dashed lower-opacity curves represent validation.
+This follow-up tracks the oracle nuisance MSE paths for the neural DML nuisance learners in the same `1.6.13` DGP. The estimator records both the in-sample path on `D2` and the out-of-sample path on an independent validation sample of size `2048`, but the current summary figure focuses on the validation path only. The figure averages the paths over `10` trials per treatment-regression candidate and overlays the three treatment-regression settings in one axes. Red curves represent `pi`, blue curves represent `mu`, and the alpha level encodes the treatment amplitude, with alpha equal to `1` for the largest `k`.
 
 Average oracle nuisance MSE at epoch `0` and epoch `200`:
 
@@ -2632,8 +2632,9 @@ Main observations:
 - The initial `pi` MSE increases sharply with the amplitude of the treatment regression, but by epoch `200` all three treatment learners finish in the narrower range `0.158` to `0.205` on D2 and `0.164` to `0.205` on validation.
 - The final `mu` path is largest for `pi_2`, matching the earlier non-monotone nuisance behavior observed in the standard `1.6.13` summary.
 
-Generated diagnostic figure:
+Generated diagnostic figures:
 
+- `examples/plm/figs/1.6/1.6.13_nuisance_validation_overlay_paths.png`
 - `examples/plm/figs/1.6/1.6.13_nuisance_in_out_average_paths.png`
 
 ## 1.6.14

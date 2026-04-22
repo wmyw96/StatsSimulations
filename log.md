@@ -405,3 +405,9 @@
 - Added a `1.6_13_tracking` diagnostic experiment that reuses the `1.6.13` DGP but records neural DML oracle nuisance MSE paths on both `D2` and an independent validation sample of size `2048`.
 - Added a dual-source tracking plotter that averages the in-sample and out-of-sample `mu` and `pi` paths over trials and saves `examples/plm/figs/1.6/1.6.13_nuisance_in_out_average_paths.png`.
 - Ran the `10`-trial tracking diagnostic for all three `1.6.13` treatment-regression candidates and updated the experiment log with the final-path summary.
+
+## 2026-04-22 16:10:57 EDT
+
+- Updated the `1.6_13_tracking` visualization to overlay the three treatment-regression settings in one validation-only figure, using red for `pi`, blue for `mu`, and increasing alpha for larger `k`.
+- Regenerated `examples/plm/figs/1.6/1.6.13_nuisance_validation_overlay_paths.png` from the existing tracking artifact and kept the prior path as a compatibility alias.
+- Refreshed the experiment log to describe the validation-only overlay convention.
