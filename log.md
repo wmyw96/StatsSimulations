@@ -377,3 +377,8 @@
 - Added experiment `1.6.12`, a three-dimensional PLM with `n = 2048`, `batch_size = 2048`, `beta ~ Unif[-0.5, 0.5]`, and smooth-plus-residual treatment regressions on the second coordinate.
 - Ran the requested `10` trials per treatment-regression setting, generated the standard beta MSE, squared-bias, and variance figures, and extracted nuisance MSE summaries from the saved artifact.
 - Updated `examples/plm/exp_log.md` with the `1.6.12` numerical results, including the observed DML AIPW failure at the largest treatment scaling.
+
+## 2026-04-21 21:51:07 EDT
+
+- Added a unified `1.6.12` visualization that combines oracle beta MSE, DML nuisance MSE, and beta-MSE boxplots for DML and minimax debias in one log-scale figure.
+- Regenerated the `1.6.12` visualization outputs and recorded the new unified figure path in `examples/plm/exp_log.md`.

@@ -2531,3 +2531,4 @@ Generated figures:
 - `examples/plm/figs/1.6/1.6.12_pi_complexity_mean_mse_comparison.png`
 - `examples/plm/figs/1.6/1.6.12_pi_complexity_beta_bias_sq.png`
 - `examples/plm/figs/1.6/1.6.12_pi_complexity_beta_variance.png`
+- `examples/plm/figs/1.6/1.6.12_unified_mse_boxplot.png`

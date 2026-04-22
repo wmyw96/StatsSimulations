@@ -762,6 +762,152 @@ def _plot_family_15_pi_complexity(
         title_suffix="variance of beta estimation error",
         filename_stem="pi_complexity_beta_variance",
     )
+    if display_exp_id == "1.6.12":
+        _plot_family_1612_unified_boxplot(
+            display_exp_id=display_exp_id,
+            fig_dir=fig_dir,
+            evaluator=evaluator,
+            fixed_dgp_config=fixed_dgp_config,
+            pi_specs=pi_specs,
+        )
+
+
+def _plot_family_1612_unified_boxplot(
+    *,
+    display_exp_id: str,
+    fig_dir: Path,
+    evaluator,
+    fixed_dgp_config: dict,
+    pi_specs: list[tuple[str, str]],
+) -> None:
+    import matplotlib.pyplot as plt
+    from matplotlib.lines import Line2D
+    from matplotlib.patches import Patch
+
+    results = json.loads(evaluator.result_path.read_text())
+    x_values = np.arange(len(pi_specs), dtype=float)
+    box_width = 0.28
+    dml_positions = x_values - 0.18
+    minimax_positions = x_values + 0.18
+
+    dml_beta_mse: list[list[float]] = []
+    minimax_beta_mse: list[list[float]] = []
+    mu_mse_means: list[float] = []
+    pi_mse_means: list[float] = []
+    oracle_beta_mse_values: list[float] = []
+
+    for func_pi_name, _label in pi_specs:
+        param_config = {
+            **fixed_dgp_config,
+            "func_pi_name": func_pi_name,
+        }
+        config_signature = evaluator._config_signature(param_config)
+        matching_trials = [
+            trial
+            for trial in results["trial_results"]
+            if evaluator._config_signature(trial["dgp_config"]) == config_signature
+        ]
+
+        dml_values = []
+        minimax_values = []
+        mu_values = []
+        pi_values = []
+        for trial in matching_trials:
+            for estimator_record in trial["estimator_results"]:
+                method_name = estimator_record["estimator_name"]
+                if method_name == "oracle_aipw":
+                    oracle_beta_mse_values.append(float(estimator_record["beta_sq_error"]))
+                elif method_name == "dml_nn":
+                    dml_values.append(float(estimator_record["beta_sq_error"]))
+                    mu_values.append(float(estimator_record["mu_mse"]))
+                    pi_values.append(float(estimator_record["pi_mse"]))
+                elif method_name == "plm_minimax_debias":
+                    minimax_values.append(float(estimator_record["beta_sq_error"]))
+
+        dml_beta_mse.append(dml_values)
+        minimax_beta_mse.append(minimax_values)
+        mu_mse_means.append(float(np.mean(mu_values)))
+        pi_mse_means.append(float(np.mean(pi_values)))
+
+    fig, axis = plt.subplots(figsize=(8.4, 5.1))
+    dml_box = axis.boxplot(
+        dml_beta_mse,
+        positions=dml_positions,
+        widths=box_width,
+        patch_artist=True,
+        showfliers=True,
+        manage_ticks=False,
+    )
+    minimax_box = axis.boxplot(
+        minimax_beta_mse,
+        positions=minimax_positions,
+        widths=box_width,
+        patch_artist=True,
+        showfliers=True,
+        manage_ticks=False,
+    )
+
+    def style_boxplot(boxplot, color: str) -> None:
+        for box in boxplot["boxes"]:
+            box.set(facecolor=color, edgecolor=color, alpha=0.55, linewidth=1.5)
+        for median in boxplot["medians"]:
+            median.set(color="black", linewidth=1.6)
+        for whisker in boxplot["whiskers"]:
+            whisker.set(color=color, linewidth=1.2)
+        for cap in boxplot["caps"]:
+            cap.set(color=color, linewidth=1.2)
+        for flier in boxplot["fliers"]:
+            flier.set(marker="o", markerfacecolor=color, markeredgecolor=color, alpha=0.75, markersize=4)
+
+    style_boxplot(dml_box, COLOR_BANK["mygreen"])
+    style_boxplot(minimax_box, COLOR_BANK["myorange"])
+
+    oracle_level = float(np.mean(oracle_beta_mse_values))
+    axis.axhline(
+        oracle_level,
+        color=COLOR_BANK["myred"],
+        linestyle="--",
+        linewidth=2.2,
+        label="Oracle AIPW beta MSE",
+    )
+    axis.plot(
+        x_values,
+        mu_mse_means,
+        color=COLOR_BANK["myblue"],
+        linestyle=":",
+        linewidth=2.6,
+        marker="o",
+        label="DML mu MSE",
+    )
+    axis.plot(
+        x_values,
+        pi_mse_means,
+        color=COLOR_BANK["mylightblue"],
+        linestyle=":",
+        linewidth=2.6,
+        marker="o",
+        label="DML pi MSE",
+    )
+
+    axis.set_yscale("log")
+    axis.set_xticks(x_values)
+    axis.set_xticklabels([label for _, label in pi_specs], rotation=15, ha="right")
+    axis.set_xlabel(r"Treatment regression $\pi(x)$")
+    axis.set_ylabel("Mean squared error")
+    axis.set_title(f"{display_exp_id}: unified nuisance and beta MSE comparison")
+    legend_handles = [
+        Patch(facecolor=COLOR_BANK["mygreen"], edgecolor=COLOR_BANK["mygreen"], alpha=0.55, label="DML beta MSE"),
+        Patch(facecolor=COLOR_BANK["myorange"], edgecolor=COLOR_BANK["myorange"], alpha=0.55, label="Minimax debias beta MSE"),
+        Line2D([0], [0], color=COLOR_BANK["myred"], linestyle="--", linewidth=2.2, label="Oracle AIPW beta MSE"),
+        Line2D([0], [0], color=COLOR_BANK["myblue"], linestyle=":", marker="o", linewidth=2.6, label="DML mu MSE"),
+        Line2D([0], [0], color=COLOR_BANK["mylightblue"], linestyle=":", marker="o", linewidth=2.6, label="DML pi MSE"),
+    ]
+    axis.legend(handles=legend_handles, loc="upper left")
+    fig.tight_layout()
+    output_path = fig_dir / f"{display_exp_id}_unified_mse_boxplot.png"
+    fig.savefig(output_path, dpi=220)
+    plt.close(fig)
+    print(f"Saved {output_path}")
 
 
 def _plot_family_169_mse_and_grouped_bias_variance(
