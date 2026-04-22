@@ -2531,7 +2531,7 @@ Generated figures:
 - `examples/plm/figs/1.6/1.6.12_pi_complexity_mean_mse_comparison.png`
 - `examples/plm/figs/1.6/1.6.12_pi_complexity_beta_bias_sq.png`
 - `examples/plm/figs/1.6/1.6.12_pi_complexity_beta_variance.png`
-- `examples/plm/figs/1.6/1.6.12_unified_mse_boxplot.png`
+- `examples/plm/figs/1.6/1.6.12_unified_mse_mean_curve.png`
 
 ## 1.6.13
 
@@ -2600,11 +2600,11 @@ Main observations:
 - Unlike `1.6.12`, no catastrophic DML outlier appears in this 10-trial run.
 - DML treatment nuisance MSE grows with the `sin(5x_2)` treatment amplitude: `0.205605 -> 0.237735 -> 0.313179`.
 - The minimax-debias estimator stays close to oracle in all three settings, with beta MSE around `0.0027` to `0.0032`.
-- The unified figure shows a cleaner separation between nuisance difficulty and beta-estimation boxplots than in `1.6.12`.
+- The unified figure shows a cleaner separation between nuisance difficulty and beta-estimation mean curves than in `1.6.12`.
 
 Generated figures:
 
 - `examples/plm/figs/1.6/1.6.13_pi_complexity_mean_mse_comparison.png`
 - `examples/plm/figs/1.6/1.6.13_pi_complexity_beta_bias_sq.png`
 - `examples/plm/figs/1.6/1.6.13_pi_complexity_beta_variance.png`
-- `examples/plm/figs/1.6/1.6.13_unified_mse_boxplot.png`
+- `examples/plm/figs/1.6/1.6.13_unified_mse_mean_curve.png`

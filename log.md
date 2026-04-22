@@ -388,3 +388,8 @@
 - Added experiment `1.6.13`, a two-dimensional PLM with `n = 1024`, `batch_size = 1024`, `beta ~ Unif[-0.5, 0.5]`, and treatment regressions `sin(x_2) + k sin(5x_2) + 0.05 sin(20x_2)`.
 - Ran the requested `10` trials per treatment-regression setting and generated standard beta decomposition figures plus the unified nuisance/beta-MSE boxplot.
 - Updated `examples/plm/exp_log.md` with the `1.6.13` numerical results and comparison notes against `1.6.12`.
+
+## 2026-04-21 23:07:09 EDT
+
+- Replaced the DML and minimax boxplots in the unified `1.6.12`/`1.6.13` visualization with solid mean beta-MSE curves, while keeping the oracle dashed baseline and dotted nuisance-MSE curves.
+- Regenerated the unified figures and updated `examples/plm/exp_log.md` to point to the new mean-curve figure filenames.
