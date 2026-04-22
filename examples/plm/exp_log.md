@@ -2674,7 +2674,7 @@ Experiment `1.6.14`, stored in the simulation artifact `1.6_14`.
 
 ### Goal
 
-This experiment keeps `n = 2048`, `batch_size = 2048`, and `beta ~ Unif[-0.5, 0.5]`, but switches to a three-dimensional design with a shared `cos(x_1)` component and treatment-specific scaling of the `sin(6x_2)` component. The goal is to test whether a treatment regression that changes its middle-frequency component produces a clearer degradation pattern for DML AIPW and the paper minimax-debias estimator.
+This experiment keeps `n = 2048`, `batch_size = 2048`, and `beta ~ Unif[-0.5, 0.5]`, but switches to a three-dimensional design with a shared `cos(x_1)` component and treatment-specific scaling of the `sin(6x_2)` component. The goal is to test whether a treatment regression that changes its middle-frequency component produces a clearer degradation pattern for DML AIPW and the paper minimax-debias estimator. The earlier standard-DML-only artifact was archived as `simulation_results/plm/1.6_14_standard_dml_archive.json`; the active artifact now compares validation-selected DML against the original DML estimator without model selection.
 
 ### Setting and design
 
@@ -2696,11 +2696,13 @@ Specific data-generating setting:
 
 Method design:
 
-- Compared methods: Neural DML, paper minimax-debias estimator, and Oracle AIPW
+- Compared methods: validation-selected Neural DML, standard Neural DML without model selection, paper minimax-debias estimator, and Oracle AIPW
 - Neural network depth: `L = 3`
 - Neural network width: `N = 512`
 - Outcome-network regularization: `lambda_mu = 2e-5`
 - Treatment-network regularization: `lambda_pi = 2e-5`
+- Validation sample size for validation-selected Neural DML: `validation_n = floor(n / 3) = 682`
+- Validation-selection interval for validation-selected Neural DML: every `10` epochs, including epoch `200`
 - Paper debiasing penalty: `lambda_debias = 1 / (sqrt(n) * log_2(n))` by default on the `D1` split
 - Optimizer: Adam with profiled closed-form updates for the joint least-squares beta on `D2`
 - Learning rate: `lr = 1e-3`
@@ -2712,26 +2714,42 @@ Method design:
 
 Average metrics over `10` trials for each treatment-regression candidate:
 
-| pi family | Oracle AIPW beta MSE | DML AIPW beta MSE | Minimax debias beta MSE | DML mu MSE | DML pi MSE |
-| --- | ---: | ---: | ---: | ---: | ---: |
-| `pi_1` | 0.001218 | 0.003845 | 0.003100 | 0.358750 | 0.423948 |
-| `pi_2` | 0.001228 | 0.002892 | 0.003359 | 0.283530 | 0.874364 |
-| `pi_4` | 0.001247 | 0.006117 | 0.004168 | 0.339523 | 0.353218 |
+| pi family | Oracle AIPW beta MSE | Validation-selected DML beta MSE | Standard DML beta MSE | Minimax debias beta MSE |
+| --- | ---: | ---: | ---: | ---: |
+| `pi_1` | 0.001218 | 0.001000 | 0.003845 | 0.003100 |
+| `pi_2` | 0.001228 | 0.001015 | 0.002892 | 0.003359 |
+| `pi_4` | 0.001247 | 0.001217 | 0.006117 | 0.004168 |
+
+Nuisance MSEs for the two Neural DML variants:
+
+| pi family | Selected DML mu MSE | Selected DML pi MSE | Standard DML mu MSE | Standard DML pi MSE |
+| --- | ---: | ---: | ---: | ---: |
+| `pi_1` | 0.094339 | 0.088853 | 0.358750 | 0.423948 |
+| `pi_2` | 0.103533 | 0.128702 | 0.283530 | 0.874364 |
+| `pi_4` | 0.118356 | 0.203361 | 0.339523 | 0.353218 |
 
 Bias-variance decomposition of beta estimation error over `10` trials:
 
-| pi family | DML squared bias | DML variance | Minimax squared bias | Minimax variance |
-| --- | ---: | ---: | ---: | ---: |
-| `pi_1` | 0.000229 | 0.003616 | 0.000143 | 0.002957 |
-| `pi_2` | 0.000511 | 0.002382 | 0.000141 | 0.003218 |
-| `pi_4` | 0.000095 | 0.006022 | 0.000091 | 0.004077 |
+| pi family | Selected DML squared bias | Selected DML variance | Standard DML squared bias | Standard DML variance | Minimax squared bias | Minimax variance |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| `pi_1` | 0.000206 | 0.000794 | 0.000229 | 0.003616 | 0.000143 | 0.002957 |
+| `pi_2` | 0.000084 | 0.000931 | 0.000511 | 0.002382 | 0.000141 | 0.003218 |
+| `pi_4` | 0.000149 | 0.001068 | 0.000095 | 0.006022 | 0.000091 | 0.004077 |
+
+Validation-selection diagnostics for Neural DML:
+
+| pi family | Validation n | Checkpoint grid | Mean selected mu epoch | Mean selected pi epoch |
+| --- | ---: | --- | ---: | ---: |
+| `pi_1` | 682 | `10, 20, ..., 200` | 41.0 | 34.0 |
+| `pi_2` | 682 | `10, 20, ..., 200` | 39.0 | 46.0 |
+| `pi_4` | 682 | `10, 20, ..., 200` | 38.0 | 56.0 |
 
 Main observations:
 
-- DML AIPW beta MSE is largest for `pi_4`, but not monotone from `pi_1` to `pi_2`: `0.003845 -> 0.002892 -> 0.006117`.
-- The DML treatment nuisance MSE spikes for `pi_2` in this run, while the beta MSE spike appears at `pi_4`. This suggests the mapping from nuisance MSE to beta MSE remains sensitive to trial-level covariance and residual alignment, not just marginal nuisance accuracy.
-- The minimax-debias beta MSE increases mildly with the largest treatment amplitude and remains more stable than DML at `pi_4`, but it is not as close to oracle as in `1.6.13`.
-- As in `1.6.13`, variance dominates the beta-error decomposition for both learned estimators.
+- Validation-selected DML substantially improves both nuisance MSEs and beta MSE relative to standard DML without model selection in all three treatment settings.
+- The validation-selected DML beta MSE is very close to the oracle AIPW benchmark in this run, while standard DML remains much more variable.
+- Standard DML still shows the largest beta MSE at `pi_4`, while validation-selected DML is comparatively stable across the three treatment-regression candidates.
+- For standard DML and minimax-debias, variance dominates beta error. Validation-selected DML also remains variance-dominated, but the variance is much smaller than the standard DML variance.
 
 Generated figures:
 

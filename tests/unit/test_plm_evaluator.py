@@ -866,14 +866,22 @@ class PLMEvaluatorTests(unittest.TestCase):
         self.assertAlmostEqual(evaluator_16_14.dgp_param_grid["sigma_u"], 3.0**0.5)
         self.assertAlmostEqual(evaluator_16_14.dgp_param_grid["sigma_eps"], 3.0**0.5)
         self.assertEqual(evaluator_16_14.dgp_param_grid["n"], [2048])
-        self.assertEqual([spec["name"] for spec in evaluator_16_14.estimators], ["dml_nn", "plm_minimax_debias", "oracle_aipw"])
+        self.assertEqual(
+            [spec["name"] for spec in evaluator_16_14.estimators],
+            ["dml_nn_valid_select", "dml_nn", "plm_minimax_debias", "oracle_aipw"],
+        )
         self.assertEqual(evaluator_16_14.estimators[0]["method_config"]["d"], 3)
         self.assertEqual(evaluator_16_14.estimators[1]["method_config"]["d"], 3)
+        self.assertEqual(evaluator_16_14.estimators[2]["method_config"]["d"], 3)
         self.assertEqual(evaluator_16_14.estimators[0]["method_config"]["batch_size"], 2048)
         self.assertEqual(evaluator_16_14.estimators[1]["method_config"]["batch_size"], 2048)
+        self.assertEqual(evaluator_16_14.estimators[2]["method_config"]["batch_size"], 2048)
+        self.assertEqual(evaluator_16_14.estimators[0]["method_config"]["validation_check_interval"], 10)
         self.assertTrue(evaluator_16_14.estimators[0]["accepts_trial_seed"])
+        self.assertTrue(evaluator_16_14.estimators[0]["accepts_validation_data"])
         self.assertTrue(evaluator_16_14.estimators[1]["accepts_trial_seed"])
-        self.assertTrue(evaluator_16_14.estimators[2]["accepts_dgp_config"])
+        self.assertTrue(evaluator_16_14.estimators[2]["accepts_trial_seed"])
+        self.assertTrue(evaluator_16_14.estimators[3]["accepts_dgp_config"])
 
         evaluator_16_14_tracking = build_evaluator_from_exp_id(
             exp_id="1.6_14_tracking",

@@ -429,3 +429,9 @@
 - Switched experiment `1.6.13` from standard Neural DML to `dml_nn_valid_select`, using observed validation data of default size `floor(n / 3)` and validation checks every `10` epochs.
 - Archived the old standard-DML artifact as `simulation_results/plm/1.6_13_standard_dml_archive.json`, reran `1.6.13` with `10` trials per treatment-regression candidate, and regenerated the `1.6.13` figures.
 - Updated the experiment log with the new validation-selected DML beta/nuisance MSE table, bias-variance decomposition, and selected-epoch diagnostics.
+
+## 2026-04-22 19:02:32 EDT
+
+- Updated experiment `1.6.14` to compare validation-selected Neural DML, standard Neural DML without model selection, paper minimax-debias, and oracle AIPW in the same run.
+- Archived the previous standard-DML-only artifact as `simulation_results/plm/1.6_14_standard_dml_archive.json`, reran `1.6.14` with `10` trials per treatment-regression candidate, and regenerated the `1.6.14` figures.
+- Updated the plotting code to show multiple DML variants in the 1.5/1.6 family summaries and refreshed the experiment log with beta, nuisance, bias-variance, and selected-epoch diagnostics.

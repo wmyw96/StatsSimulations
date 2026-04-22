@@ -40,6 +40,18 @@ LAMBDA_SWEEP_COLORS = [
 ]
 
 DML_METHOD_ALIASES = ("dml_nn_valid_select", "dml_nn")
+DML_BETA_COLORS = {
+    "dml_nn_valid_select": COLOR_BANK["mygreen"],
+    "dml_nn": COLOR_BANK["myorange"],
+}
+DML_MU_LINESTYLES = {
+    "dml_nn_valid_select": ":",
+    "dml_nn": "--",
+}
+DML_PI_LINESTYLES = {
+    "dml_nn_valid_select": ":",
+    "dml_nn": "--",
+}
 
 
 def parse_args() -> argparse.Namespace:
@@ -50,15 +62,24 @@ def parse_args() -> argparse.Namespace:
 
 def _select_dml_method_name(results: dict) -> str:
     """Choose the DML estimator name present in an experiment artifact."""
+    available_method_names = _available_dml_method_names(results)
+    if available_method_names:
+        return available_method_names[0]
+    return DML_METHOD_ALIASES[-1]
+
+
+def _available_dml_method_names(results: dict) -> list[str]:
+    """Return all DML estimator names present in an experiment artifact."""
     observed_names = {
         estimator_record["estimator_name"]
         for trial in results.get("trial_results", [])
         for estimator_record in trial.get("estimator_results", [])
     }
-    for method_name in DML_METHOD_ALIASES:
-        if method_name in observed_names:
-            return method_name
-    return DML_METHOD_ALIASES[-1]
+    return [
+        method_name
+        for method_name in DML_METHOD_ALIASES
+        if method_name in observed_names
+    ]
 
 
 def _dml_label(method_name: str, suffix: str = "") -> str:
@@ -807,11 +828,18 @@ def _plot_family_15_pi_complexity(
 
     x_values = np.arange(len(pi_specs), dtype=float)
     results = json.loads(evaluator.result_path.read_text())
-    dml_method_name = _select_dml_method_name(results)
+    dml_method_names = _available_dml_method_names(results) or [_select_dml_method_name(results)]
     method_specs = [
-        (dml_method_name, _dml_label(dml_method_name, "AIPW beta"), COLOR_BANK["myorange"]),
-        ("plm_minimax_debias", "Minimax debias beta", COLOR_BANK["mypurple"]),
+        (
+            method_name,
+            _dml_label(method_name, "AIPW beta"),
+            DML_BETA_COLORS.get(method_name, COLOR_BANK["myorange"]),
+        )
+        for method_name in dml_method_names
     ]
+    method_specs.append(
+        ("plm_minimax_debias", "Minimax debias beta", COLOR_BANK["mypurple"]),
+    )
 
     def build_decompositions() -> list[tuple[str, dict[str, dict[str, float | int]]]]:
         decompositions = []
@@ -938,13 +966,18 @@ def _plot_family_1612_unified_mean_curves(
     from matplotlib.lines import Line2D
 
     results = json.loads(evaluator.result_path.read_text())
-    dml_method_name = _select_dml_method_name(results)
+    dml_method_names = _available_dml_method_names(results) or [_select_dml_method_name(results)]
     x_values = np.arange(len(pi_specs), dtype=float)
 
-    dml_beta_mse_means: list[float] = []
+    dml_mean_paths = {
+        method_name: {
+            "beta": [],
+            "mu": [],
+            "pi": [],
+        }
+        for method_name in dml_method_names
+    }
     minimax_beta_mse_means: list[float] = []
-    mu_mse_means: list[float] = []
-    pi_mse_means: list[float] = []
     oracle_beta_mse_values: list[float] = []
 
     for func_pi_name, _label in pi_specs:
@@ -959,26 +992,27 @@ def _plot_family_1612_unified_mean_curves(
             if evaluator._config_signature(trial["dgp_config"]) == config_signature
         ]
 
-        dml_values = []
+        dml_values_by_method = {method_name: [] for method_name in dml_method_names}
+        mu_values_by_method = {method_name: [] for method_name in dml_method_names}
+        pi_values_by_method = {method_name: [] for method_name in dml_method_names}
         minimax_values = []
-        mu_values = []
-        pi_values = []
         for trial in matching_trials:
             for estimator_record in trial["estimator_results"]:
                 method_name = estimator_record["estimator_name"]
                 if method_name == "oracle_aipw":
                     oracle_beta_mse_values.append(float(estimator_record["beta_sq_error"]))
-                elif method_name == dml_method_name:
-                    dml_values.append(float(estimator_record["beta_sq_error"]))
-                    mu_values.append(float(estimator_record["mu_mse"]))
-                    pi_values.append(float(estimator_record["pi_mse"]))
+                elif method_name in dml_values_by_method:
+                    dml_values_by_method[method_name].append(float(estimator_record["beta_sq_error"]))
+                    mu_values_by_method[method_name].append(float(estimator_record["mu_mse"]))
+                    pi_values_by_method[method_name].append(float(estimator_record["pi_mse"]))
                 elif method_name == "plm_minimax_debias":
                     minimax_values.append(float(estimator_record["beta_sq_error"]))
 
-        dml_beta_mse_means.append(float(np.mean(dml_values)))
+        for method_name in dml_method_names:
+            dml_mean_paths[method_name]["beta"].append(float(np.mean(dml_values_by_method[method_name])))
+            dml_mean_paths[method_name]["mu"].append(float(np.mean(mu_values_by_method[method_name])))
+            dml_mean_paths[method_name]["pi"].append(float(np.mean(pi_values_by_method[method_name])))
         minimax_beta_mse_means.append(float(np.mean(minimax_values)))
-        mu_mse_means.append(float(np.mean(mu_values)))
-        pi_mse_means.append(float(np.mean(pi_values)))
 
     fig, axis = plt.subplots(figsize=(8.4, 5.1))
     oracle_level = float(np.mean(oracle_beta_mse_values))
@@ -989,42 +1023,45 @@ def _plot_family_1612_unified_mean_curves(
         linewidth=2.2,
         label="Oracle AIPW beta MSE",
     )
-    axis.plot(
-        x_values,
-        dml_beta_mse_means,
-        color=COLOR_BANK["mygreen"],
-        linestyle="-",
-        linewidth=2.6,
-        marker="o",
-        label=_dml_label(dml_method_name, "beta MSE"),
-    )
+    for method_name in dml_method_names:
+        axis.plot(
+            x_values,
+            dml_mean_paths[method_name]["beta"],
+            color=DML_BETA_COLORS.get(method_name, COLOR_BANK["myorange"]),
+            linestyle="-",
+            linewidth=2.6,
+            marker="o",
+            label=_dml_label(method_name, "beta MSE"),
+        )
+    minimax_color = COLOR_BANK["mypurple"] if len(dml_method_names) > 1 else COLOR_BANK["myorange"]
     axis.plot(
         x_values,
         minimax_beta_mse_means,
-        color=COLOR_BANK["myorange"],
+        color=minimax_color,
         linestyle="-",
         linewidth=2.6,
         marker="o",
         label="Minimax debias beta MSE",
     )
-    axis.plot(
-        x_values,
-        mu_mse_means,
-        color=COLOR_BANK["myblue"],
-        linestyle=":",
-        linewidth=2.6,
-        marker="o",
-        label=_dml_label(dml_method_name, "mu MSE"),
-    )
-    axis.plot(
-        x_values,
-        pi_mse_means,
-        color=COLOR_BANK["mylightblue"],
-        linestyle=":",
-        linewidth=2.6,
-        marker="o",
-        label=_dml_label(dml_method_name, "pi MSE"),
-    )
+    for method_name in dml_method_names:
+        axis.plot(
+            x_values,
+            dml_mean_paths[method_name]["mu"],
+            color=COLOR_BANK["myblue"],
+            linestyle=DML_MU_LINESTYLES.get(method_name, ":"),
+            linewidth=2.4,
+            marker="o",
+            label=_dml_label(method_name, "mu MSE"),
+        )
+        axis.plot(
+            x_values,
+            dml_mean_paths[method_name]["pi"],
+            color=COLOR_BANK["mylightblue"],
+            linestyle=DML_PI_LINESTYLES.get(method_name, ":"),
+            linewidth=2.4,
+            marker="o",
+            label=_dml_label(method_name, "pi MSE"),
+        )
 
     axis.set_yscale("log")
     axis.set_xticks(x_values)
@@ -1034,11 +1071,53 @@ def _plot_family_1612_unified_mean_curves(
     axis.set_title(f"{display_exp_id}: unified nuisance and beta MSE comparison")
     legend_handles = [
         Line2D([0], [0], color=COLOR_BANK["myred"], linestyle="--", linewidth=2.2, label="Oracle AIPW beta MSE"),
-        Line2D([0], [0], color=COLOR_BANK["mygreen"], linestyle="-", marker="o", linewidth=2.6, label=_dml_label(dml_method_name, "beta MSE")),
-        Line2D([0], [0], color=COLOR_BANK["myorange"], linestyle="-", marker="o", linewidth=2.6, label="Minimax debias beta MSE"),
-        Line2D([0], [0], color=COLOR_BANK["myblue"], linestyle=":", marker="o", linewidth=2.6, label=_dml_label(dml_method_name, "mu MSE")),
-        Line2D([0], [0], color=COLOR_BANK["mylightblue"], linestyle=":", marker="o", linewidth=2.6, label=_dml_label(dml_method_name, "pi MSE")),
     ]
+    for method_name in dml_method_names:
+        legend_handles.append(
+            Line2D(
+                [0],
+                [0],
+                color=DML_BETA_COLORS.get(method_name, COLOR_BANK["myorange"]),
+                linestyle="-",
+                marker="o",
+                linewidth=2.6,
+                label=_dml_label(method_name, "beta MSE"),
+            )
+        )
+    legend_handles.append(
+        Line2D(
+            [0],
+            [0],
+            color=minimax_color,
+            linestyle="-",
+            marker="o",
+            linewidth=2.6,
+            label="Minimax debias beta MSE",
+        )
+    )
+    for method_name in dml_method_names:
+        legend_handles.append(
+            Line2D(
+                [0],
+                [0],
+                color=COLOR_BANK["myblue"],
+                linestyle=DML_MU_LINESTYLES.get(method_name, ":"),
+                marker="o",
+                linewidth=2.4,
+                label=_dml_label(method_name, "mu MSE"),
+            )
+        )
+        legend_handles.append(
+            Line2D(
+                [0],
+                [0],
+                color=COLOR_BANK["mylightblue"],
+                linestyle=DML_PI_LINESTYLES.get(method_name, ":"),
+                marker="o",
+                linewidth=2.4,
+                label=_dml_label(method_name, "pi MSE"),
+            )
+        )
     axis.legend(handles=legend_handles, loc="upper left")
     fig.tight_layout()
     output_path = fig_dir / f"{display_exp_id}_unified_mse_mean_curve.png"
