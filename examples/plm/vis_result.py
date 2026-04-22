@@ -48,8 +48,8 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
-    _, display_exp_id = normalize_exp_id(args.exp_id)
-    family_display_id = display_exp_id.rsplit(".", 1)[0]
+    storage_id, display_exp_id = normalize_exp_id(args.exp_id)
+    family_display_id = storage_id.split("_", 1)[0]
     evaluator = build_evaluator_from_exp_id(exp_id=args.exp_id, n_trials=1)
     metric_specs = {
         "beta_hat_mse": {
@@ -89,6 +89,15 @@ def main() -> None:
         for key, value in evaluator.dgp_param_grid.items()
         if key != "n"
     }
+
+    if _has_dual_source_tracking_paths(results):
+        _plot_dual_source_tracking_average_paths(
+            display_exp_id=_tracking_base_display_id(storage_id=storage_id, display_exp_id=display_exp_id),
+            fig_dir=fig_dir,
+            evaluator=evaluator,
+            results=results,
+        )
+        return
 
     summaries = {
         n: evaluator.query_results(
@@ -306,6 +315,146 @@ def _plot_family_13_unified(
     output_path = fig_dir / f"{display_exp_id}_unified_mse_scaling.png"
     plt.savefig(output_path, dpi=220)
     plt.close()
+    print(f"Saved {output_path}")
+
+
+def _has_dual_source_tracking_paths(results: dict[str, object]) -> bool:
+    """Return whether any estimator record contains both D2 and validation tracking paths."""
+    for trial in results.get("trial_results", []):
+        for record in trial.get("estimator_results", []):
+            tracking_paths = record.get("tracking_paths", {})
+            if "D2" in tracking_paths and "validation" in tracking_paths:
+                return True
+    return False
+
+
+def _tracking_base_display_id(*, storage_id: str, display_exp_id: str) -> str:
+    """Map diagnostic storage ids back to the experiment display id used in filenames."""
+    if storage_id.endswith("_tracking"):
+        return storage_id.removesuffix("_tracking").replace("_", ".")
+    return display_exp_id
+
+
+def _plot_dual_source_tracking_average_paths(
+    *,
+    display_exp_id: str,
+    fig_dir: Path,
+    evaluator,
+    results: dict[str, object],
+) -> None:
+    """Plot average D2 and validation oracle nuisance MSE paths by pi configuration."""
+    import matplotlib.pyplot as plt
+    from matplotlib.lines import Line2D
+
+    fixed_dgp_config = {
+        key: value
+        for key, value in evaluator.dgp_param_grid.items()
+        if key not in {"func_pi_name", "n"}
+    }
+    fixed_dgp_config["n"] = int(evaluator.dgp_param_grid["n"][0])
+    pi_specs = [
+        (func_pi_name, FUNCTION_LABELS.get(func_pi_name, func_pi_name))
+        for func_pi_name in evaluator.dgp_param_grid["func_pi_name"]
+    ]
+
+    n_panels = len(pi_specs)
+    fig, axes = plt.subplots(1, n_panels, figsize=(5.0 * n_panels, 5.2), sharex=True, sharey=True)
+    axes = np.atleast_1d(axes)
+    positive_values = []
+    plotted_panels = 0
+
+    for axis, (func_pi_name, pi_label) in zip(axes, pi_specs, strict=True):
+        param_config = {
+            **fixed_dgp_config,
+            "func_pi_name": func_pi_name,
+        }
+        config_signature = evaluator._config_signature(param_config)
+        matching_records = [
+            record
+            for trial in results["trial_results"]
+            if evaluator._config_signature(trial["dgp_config"]) == config_signature
+            for record in trial["estimator_results"]
+            if "tracking_paths" in record
+        ]
+        if not matching_records:
+            axis.set_visible(False)
+            continue
+
+        epoch_grid = np.asarray(matching_records[0]["epoch_grid"], dtype=float)
+        source_arrays = {}
+        for source_label in ("D2", "validation"):
+            source_records = [
+                record["tracking_paths"][source_label]
+                for record in matching_records
+                if source_label in record["tracking_paths"]
+            ]
+            if not source_records:
+                continue
+            source_arrays[source_label] = {
+                "mu": np.asarray([item["mu_mse_path"] for item in source_records], dtype=float),
+                "pi": np.asarray([item["pi_mse_path"] for item in source_records], dtype=float),
+            }
+
+        curve_specs = [
+            ("pi", "D2", COLOR_BANK["myblue"], 0.95, "-", r"$\pi$, D2"),
+            ("pi", "validation", COLOR_BANK["myblue"], 0.45, "--", r"$\pi$, validation"),
+            ("mu", "D2", COLOR_BANK["myred"], 0.95, "-", r"$\mu$, D2"),
+            ("mu", "validation", COLOR_BANK["myred"], 0.45, "--", r"$\mu$, validation"),
+        ]
+        for metric_name, source_label, color, alpha, linestyle, label in curve_specs:
+            if source_label not in source_arrays:
+                continue
+            mean_path = source_arrays[source_label][metric_name].mean(axis=0)
+            positive_values.extend(value for value in mean_path if value > 0.0)
+            axis.plot(
+                epoch_grid,
+                mean_path,
+                color=color,
+                alpha=alpha,
+                linestyle=linestyle,
+                linewidth=2.4,
+                label=label,
+            )
+
+        n_trials = max(
+            source_arrays[source_label]["mu"].shape[0]
+            for source_label in source_arrays
+        )
+        axis.set_title(f"{pi_label}\n{n_trials} trials")
+        axis.set_yscale("log")
+        axis.grid(alpha=0.18)
+        plotted_panels += 1
+
+    if plotted_panels == 0:
+        raise SystemExit(f"No dual-source tracking records were found in the results for {display_exp_id}.")
+
+    if positive_values:
+        y_min = max(min(positive_values) * 0.8, 1e-8)
+        y_max = max(positive_values) * 1.1
+        for axis in axes:
+            if axis.get_visible():
+                axis.set_ylim(y_min, y_max)
+
+    fig.supxlabel("Epoch")
+    fig.supylabel("Average oracle nuisance MSE")
+    legend_handles = [
+        Line2D([0], [0], color=COLOR_BANK["myblue"], linewidth=2.4, label=r"$\pi$"),
+        Line2D([0], [0], color=COLOR_BANK["myred"], linewidth=2.4, label=r"$\mu$"),
+        Line2D([0], [0], color="black", linewidth=2.4, linestyle="-", label="D2 in-sample"),
+        Line2D([0], [0], color="black", linewidth=2.4, linestyle="--", alpha=0.55, label="validation out-of-sample"),
+    ]
+    fig.suptitle(f"{display_exp_id}: in-sample and out-of-sample nuisance learning", y=0.98)
+    fig.legend(
+        handles=legend_handles,
+        loc="upper center",
+        bbox_to_anchor=(0.5, 0.92),
+        ncol=4,
+        frameon=False,
+    )
+    fig.tight_layout(rect=(0.02, 0.03, 1.0, 0.82))
+    output_path = fig_dir / f"{display_exp_id}_nuisance_in_out_average_paths.png"
+    fig.savefig(output_path, dpi=220)
+    plt.close(fig)
     print(f"Saved {output_path}")
 
 

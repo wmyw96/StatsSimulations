@@ -399,3 +399,9 @@
 - Reran experiment `1.6.13` with `n = 2048` and `batch_size = 2048`, archiving the earlier `n = 1024` artifact as `simulation_results/plm/1.6_13_n1024_archive.json`.
 - Added experiment `1.6.14`, a three-dimensional PLM with `mu(x) = cos(x_1) + 0.25 sin(6x_2) + 0.05 sin(19x_3)` and `pi_k(x) = cos(x_1) + (k/2) sin(6x_2) + 0.05 sin(19x_3)` for `k in {1,2,4}`.
 - Ran `10` trials per treatment-regression candidate for both experiments, regenerated the standard and unified mean-curve figures, and updated the experiment log with the numerical summaries.
+
+## 2026-04-22 09:50:31 EDT
+
+- Added a `1.6_13_tracking` diagnostic experiment that reuses the `1.6.13` DGP but records neural DML oracle nuisance MSE paths on both `D2` and an independent validation sample of size `2048`.
+- Added a dual-source tracking plotter that averages the in-sample and out-of-sample `mu` and `pi` paths over trials and saves `examples/plm/figs/1.6/1.6.13_nuisance_in_out_average_paths.png`.
+- Ran the `10`-trial tracking diagnostic for all three `1.6.13` treatment-regression candidates and updated the experiment log with the final-path summary.

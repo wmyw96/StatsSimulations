@@ -31,6 +31,7 @@ class PLMEvaluatorTests(unittest.TestCase):
         self.assertEqual(normalize_exp_id("1.6.11"), ("1.6_11", "1.6.11"))
         self.assertEqual(normalize_exp_id("1.6.12"), ("1.6_12", "1.6.12"))
         self.assertEqual(normalize_exp_id("1.6.13"), ("1.6_13", "1.6.13"))
+        self.assertEqual(normalize_exp_id("1.6_13_tracking"), ("1.6_13_tracking", "1.6.13.tracking"))
         self.assertEqual(normalize_exp_id("1.6.14"), ("1.6_14", "1.6.14"))
 
         evaluator = build_evaluator_from_exp_id(
@@ -807,6 +808,34 @@ class PLMEvaluatorTests(unittest.TestCase):
         self.assertTrue(evaluator_16_13.estimators[0]["accepts_trial_seed"])
         self.assertTrue(evaluator_16_13.estimators[1]["accepts_trial_seed"])
         self.assertTrue(evaluator_16_13.estimators[2]["accepts_dgp_config"])
+
+        evaluator_16_13_tracking = build_evaluator_from_exp_id(
+            exp_id="1.6_13_tracking",
+            n_trials=1,
+            seed_offset=0,
+            device="cpu",
+        )
+        self.assertEqual(evaluator_16_13_tracking.exp_id, "1.6_13_tracking")
+        self.assertEqual(evaluator_16_13_tracking.result_path.name, "1.6_13_tracking.json")
+        self.assertEqual(evaluator_16_13_tracking.dgp_param_grid["d"], 2)
+        self.assertEqual(evaluator_16_13_tracking.dgp_param_grid["func_mu_name"], "experiment_1_6_13_mu")
+        self.assertEqual(
+            evaluator_16_13_tracking.dgp_param_grid["func_pi_name"],
+            [
+                "experiment_1_6_13_pi_1",
+                "experiment_1_6_13_pi_2",
+                "experiment_1_6_13_pi_3",
+            ],
+        )
+        self.assertEqual(evaluator_16_13_tracking.dgp_param_grid["n"], [2048])
+        self.assertEqual(len(evaluator_16_13_tracking.estimators), 1)
+        self.assertEqual(evaluator_16_13_tracking.estimators[0]["name"], "dml_nn_tracking_1_6_13")
+        self.assertTrue(evaluator_16_13_tracking.estimators[0]["is_oracle"])
+        self.assertTrue(evaluator_16_13_tracking.estimators[0]["accepts_trial_seed"])
+        tracking_config = evaluator_16_13_tracking.estimators[0]["method_config"]
+        self.assertEqual(tracking_config["tracking_source"], "validation")
+        self.assertEqual(tracking_config["validation_n"], 2048)
+        self.assertEqual(tracking_config["batch_size"], 2048)
 
         evaluator_16_14 = build_evaluator_from_exp_id(
             exp_id="1.6.14",

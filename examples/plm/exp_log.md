@@ -2609,6 +2609,33 @@ Generated figures:
 - `examples/plm/figs/1.6/1.6.13_pi_complexity_beta_variance.png`
 - `examples/plm/figs/1.6/1.6.13_unified_mse_mean_curve.png`
 
+### Nuisance-learning path diagnostic
+
+Diagnostic artifact: `simulation_results/plm/1.6_13_tracking.json`.
+
+This follow-up tracks the oracle nuisance MSE paths for the neural DML nuisance learners in the same `1.6.13` DGP. The estimator records both the in-sample path on `D2` and the out-of-sample path on an independent validation sample of size `2048`. The figure averages the paths over `10` trials per treatment-regression candidate. Blue curves represent `pi`, red curves represent `mu`, solid high-opacity curves represent `D2`, and dashed lower-opacity curves represent validation.
+
+Average oracle nuisance MSE at epoch `0` and epoch `200`:
+
+| pi family | Source | Mu MSE @ 0 | Mu MSE @ 200 | Pi MSE @ 0 | Pi MSE @ 200 |
+| --- | --- | ---: | ---: | ---: | ---: |
+| `pi_1` | D2 | 0.326047 | 0.156994 | 0.709777 | 0.200147 |
+| `pi_1` | validation | 0.326705 | 0.164995 | 0.720087 | 0.204579 |
+| `pi_2` | D2 | 0.326047 | 0.242155 | 2.125450 | 0.157932 |
+| `pi_2` | validation | 0.326705 | 0.245028 | 2.148390 | 0.163688 |
+| `pi_3` | D2 | 0.326047 | 0.180692 | 4.584240 | 0.161562 |
+| `pi_3` | validation | 0.326705 | 0.181305 | 4.620900 | 0.171805 |
+
+Main observations:
+
+- The D2 and validation curves are close across the full training path, so this diagnostic does not show a large in-sample/out-of-sample tracking gap.
+- The initial `pi` MSE increases sharply with the amplitude of the treatment regression, but by epoch `200` all three treatment learners finish in the narrower range `0.158` to `0.205` on D2 and `0.164` to `0.205` on validation.
+- The final `mu` path is largest for `pi_2`, matching the earlier non-monotone nuisance behavior observed in the standard `1.6.13` summary.
+
+Generated diagnostic figure:
+
+- `examples/plm/figs/1.6/1.6.13_nuisance_in_out_average_paths.png`
+
 ## 1.6.14
 
 Experiment `1.6.14`, stored in the simulation artifact `1.6_14`.
