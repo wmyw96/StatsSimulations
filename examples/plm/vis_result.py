@@ -39,11 +39,32 @@ LAMBDA_SWEEP_COLORS = [
     COLOR_BANK["mylightblue"],
 ]
 
+DML_METHOD_ALIASES = ("dml_nn_valid_select", "dml_nn")
+
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Visualize PLM simulation results.")
     parser.add_argument("--exp_id", required=True, help="Experiment identifier, for example 1.1.2.")
     return parser.parse_args()
+
+
+def _select_dml_method_name(results: dict) -> str:
+    """Choose the DML estimator name present in an experiment artifact."""
+    observed_names = {
+        estimator_record["estimator_name"]
+        for trial in results.get("trial_results", [])
+        for estimator_record in trial.get("estimator_results", [])
+    }
+    for method_name in DML_METHOD_ALIASES:
+        if method_name in observed_names:
+            return method_name
+    return DML_METHOD_ALIASES[-1]
+
+
+def _dml_label(method_name: str, suffix: str = "") -> str:
+    """Return a display label for the active DML estimator."""
+    prefix = "Validation-selected DML" if method_name == "dml_nn_valid_select" else "DML"
+    return f"{prefix} {suffix}".strip()
 
 
 def main() -> None:
@@ -785,11 +806,12 @@ def _plot_family_15_pi_complexity(
         return
 
     x_values = np.arange(len(pi_specs), dtype=float)
+    results = json.loads(evaluator.result_path.read_text())
+    dml_method_name = _select_dml_method_name(results)
     method_specs = [
-        ("dml_nn", "DML AIPW beta", COLOR_BANK["myorange"]),
+        (dml_method_name, _dml_label(dml_method_name, "AIPW beta"), COLOR_BANK["myorange"]),
         ("plm_minimax_debias", "Minimax debias beta", COLOR_BANK["mypurple"]),
     ]
-    results = json.loads(evaluator.result_path.read_text())
 
     def build_decompositions() -> list[tuple[str, dict[str, dict[str, float | int]]]]:
         decompositions = []
@@ -916,6 +938,7 @@ def _plot_family_1612_unified_mean_curves(
     from matplotlib.lines import Line2D
 
     results = json.loads(evaluator.result_path.read_text())
+    dml_method_name = _select_dml_method_name(results)
     x_values = np.arange(len(pi_specs), dtype=float)
 
     dml_beta_mse_means: list[float] = []
@@ -945,7 +968,7 @@ def _plot_family_1612_unified_mean_curves(
                 method_name = estimator_record["estimator_name"]
                 if method_name == "oracle_aipw":
                     oracle_beta_mse_values.append(float(estimator_record["beta_sq_error"]))
-                elif method_name == "dml_nn":
+                elif method_name == dml_method_name:
                     dml_values.append(float(estimator_record["beta_sq_error"]))
                     mu_values.append(float(estimator_record["mu_mse"]))
                     pi_values.append(float(estimator_record["pi_mse"]))
@@ -973,7 +996,7 @@ def _plot_family_1612_unified_mean_curves(
         linestyle="-",
         linewidth=2.6,
         marker="o",
-        label="DML beta MSE",
+        label=_dml_label(dml_method_name, "beta MSE"),
     )
     axis.plot(
         x_values,
@@ -991,7 +1014,7 @@ def _plot_family_1612_unified_mean_curves(
         linestyle=":",
         linewidth=2.6,
         marker="o",
-        label="DML mu MSE",
+        label=_dml_label(dml_method_name, "mu MSE"),
     )
     axis.plot(
         x_values,
@@ -1000,7 +1023,7 @@ def _plot_family_1612_unified_mean_curves(
         linestyle=":",
         linewidth=2.6,
         marker="o",
-        label="DML pi MSE",
+        label=_dml_label(dml_method_name, "pi MSE"),
     )
 
     axis.set_yscale("log")
@@ -1011,10 +1034,10 @@ def _plot_family_1612_unified_mean_curves(
     axis.set_title(f"{display_exp_id}: unified nuisance and beta MSE comparison")
     legend_handles = [
         Line2D([0], [0], color=COLOR_BANK["myred"], linestyle="--", linewidth=2.2, label="Oracle AIPW beta MSE"),
-        Line2D([0], [0], color=COLOR_BANK["mygreen"], linestyle="-", marker="o", linewidth=2.6, label="DML beta MSE"),
+        Line2D([0], [0], color=COLOR_BANK["mygreen"], linestyle="-", marker="o", linewidth=2.6, label=_dml_label(dml_method_name, "beta MSE")),
         Line2D([0], [0], color=COLOR_BANK["myorange"], linestyle="-", marker="o", linewidth=2.6, label="Minimax debias beta MSE"),
-        Line2D([0], [0], color=COLOR_BANK["myblue"], linestyle=":", marker="o", linewidth=2.6, label="DML mu MSE"),
-        Line2D([0], [0], color=COLOR_BANK["mylightblue"], linestyle=":", marker="o", linewidth=2.6, label="DML pi MSE"),
+        Line2D([0], [0], color=COLOR_BANK["myblue"], linestyle=":", marker="o", linewidth=2.6, label=_dml_label(dml_method_name, "mu MSE")),
+        Line2D([0], [0], color=COLOR_BANK["mylightblue"], linestyle=":", marker="o", linewidth=2.6, label=_dml_label(dml_method_name, "pi MSE")),
     ]
     axis.legend(handles=legend_handles, loc="upper left")
     fig.tight_layout()

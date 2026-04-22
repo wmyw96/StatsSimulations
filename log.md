@@ -423,3 +423,9 @@
 - Added a standalone `PLMValidationSelectedDMLEstimator` that trains neural DML nuisances directly, performs observed validation-loss model selection every configurable interval, restores the selected nuisance networks, and then computes the usual DML AIPW estimate.
 - Extended `PLMEvaluator` estimator specs with `accepts_validation_data=True`, sampling an observed-only independent validation set of default size `n // 3` for validation-aware estimators while preserving the existing oracle tracking validation path.
 - Added the validation-selected DML factory, estimator/evaluator unit tests, and experiment-log documentation for the new method and diagnostics.
+
+## 2026-04-22 18:14:05 EDT
+
+- Switched experiment `1.6.13` from standard Neural DML to `dml_nn_valid_select`, using observed validation data of default size `floor(n / 3)` and validation checks every `10` epochs.
+- Archived the old standard-DML artifact as `simulation_results/plm/1.6_13_standard_dml_archive.json`, reran `1.6.13` with `10` trials per treatment-regression candidate, and regenerated the `1.6.13` figures.
+- Updated the experiment log with the new validation-selected DML beta/nuisance MSE table, bias-variance decomposition, and selected-epoch diagnostics.

@@ -3680,6 +3680,7 @@ def build_experiment_1_6_13(
         "niter": 200,
         "lr": 1e-3,
         "batch_size": 2048,
+        "validation_check_interval": 10,
         "device": device,
         "seed_mode": "trial_seed",
         "d": 2,
@@ -3707,12 +3708,13 @@ def build_experiment_1_6_13(
 
     estimators = [
         {
-            "name": "dml_nn",
+            "name": "dml_nn_valid_select",
             "is_oracle": False,
-            "factory_name": "make_plm_dml_estimator",
+            "factory_name": "make_plm_validation_selected_dml_estimator",
             "method_config": deepcopy(dml_method_config),
             "accepts_trial_seed": True,
-            "factory": _make_trial_seeded_dml_factory(dml_method_config),
+            "accepts_validation_data": True,
+            "factory": _make_trial_seeded_valid_select_dml_factory(dml_method_config),
         },
         {
             "name": "plm_minimax_debias",
