@@ -1014,7 +1014,7 @@ def _plot_family_1612_unified_mean_curves(
             dml_mean_paths[method_name]["pi"].append(float(np.mean(pi_values_by_method[method_name])))
         minimax_beta_mse_means.append(float(np.mean(minimax_values)))
 
-    fig, axis = plt.subplots(figsize=(8.4, 5.1))
+    fig, axis = plt.subplots(figsize=(10.8, 5.1))
     oracle_level = float(np.mean(oracle_beta_mse_values))
     axis.axhline(
         oracle_level,
@@ -1069,11 +1069,11 @@ def _plot_family_1612_unified_mean_curves(
     axis.set_xlabel(r"Treatment regression $\pi(x)$")
     axis.set_ylabel("Mean squared error")
     axis.set_title(f"{display_exp_id}: unified nuisance and beta MSE comparison")
-    legend_handles = [
+    beta_legend_handles = [
         Line2D([0], [0], color=COLOR_BANK["myred"], linestyle="--", linewidth=2.2, label="Oracle AIPW beta MSE"),
     ]
     for method_name in dml_method_names:
-        legend_handles.append(
+        beta_legend_handles.append(
             Line2D(
                 [0],
                 [0],
@@ -1084,7 +1084,7 @@ def _plot_family_1612_unified_mean_curves(
                 label=_dml_label(method_name, "beta MSE"),
             )
         )
-    legend_handles.append(
+    beta_legend_handles.append(
         Line2D(
             [0],
             [0],
@@ -1095,8 +1095,9 @@ def _plot_family_1612_unified_mean_curves(
             label="Minimax debias beta MSE",
         )
     )
+    nuisance_legend_handles = []
     for method_name in dml_method_names:
-        legend_handles.append(
+        nuisance_legend_handles.append(
             Line2D(
                 [0],
                 [0],
@@ -1107,7 +1108,7 @@ def _plot_family_1612_unified_mean_curves(
                 label=_dml_label(method_name, "mu MSE"),
             )
         )
-        legend_handles.append(
+        nuisance_legend_handles.append(
             Line2D(
                 [0],
                 [0],
@@ -1118,8 +1119,22 @@ def _plot_family_1612_unified_mean_curves(
                 label=_dml_label(method_name, "pi MSE"),
             )
         )
-    axis.legend(handles=legend_handles, loc="upper left")
-    fig.tight_layout()
+    beta_legend = axis.legend(
+        handles=beta_legend_handles,
+        loc="upper left",
+        bbox_to_anchor=(1.02, 1.0),
+        borderaxespad=0.0,
+        title="Beta MSE",
+    )
+    axis.add_artist(beta_legend)
+    axis.legend(
+        handles=nuisance_legend_handles,
+        loc="lower left",
+        bbox_to_anchor=(1.02, 0.0),
+        borderaxespad=0.0,
+        title="Nuisance MSE",
+    )
+    fig.tight_layout(rect=(0.0, 0.0, 0.78, 1.0))
     output_path = fig_dir / f"{display_exp_id}_unified_mse_mean_curve.png"
     fig.savefig(output_path, dpi=220)
     legacy_path = fig_dir / f"{display_exp_id}_unified_mse_boxplot.png"

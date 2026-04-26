@@ -442,3 +442,9 @@
 - Added PLM experiment `1.7.2`, which keeps the projected `d = 5` setup from `1.7.1` but replaces the shared random Fourier coefficients with the fixed family `g_r(z) = sum_{k=1}^{10} k^{-1/r} [sin(pi k z) + cos(pi k z)] / sqrt(sum_{k=1}^{10} 2 k^{-2/r})`.
 - Implemented the `1.7.2` DGP function registry entries, evaluator builder, plotting support, evaluator tests, and the full `examples/plm/exp_log.md` report section, then ran the complete `40`-record simulation and regenerated the `1.7.2` figures.
 - Added companion preview scripts for the two alternating-sign variants `b_k = (-1)^k` and `a_k = b_k = (-1)^k` to make it easier to inspect how sign changes reshape the ground-truth family before turning them into new experiments.
+
+
+## 2026-04-26 19:41:15 EDT
+
+- Reworked the unified `1.7.2` MSE mean-curve legend layout so the beta-MSE and nuisance-MSE entries sit outside the plotting area in two grouped legends rather than covering the `mu` and `pi` curves.
+- Regenerated the `examples/plm/figs/1.7/1.7.2_unified_mse_mean_curve.png` figure with the new layout.
