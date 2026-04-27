@@ -461,3 +461,9 @@
 
 - Added PLM experiment `1.7.4`, which keeps the one-coordinate design from `1.7.3` but changes the fixed Fourier family to the alternating-cosine-sign version with `a_k = 1`, `b_k = (-1)^k`, and ambient dimension `d = 2`.
 - Implemented the new DGP function registry entries, evaluator builder, visualization hook, evaluator tests, and experiment-log section, then ran the full `40`-record `1.7.4` sweep and regenerated the associated `1.7.4` figures.
+
+
+## 2026-04-26 23:41:22 EDT
+
+- Added a small PLM preview script for the tanh-wrapped `1.7.4` family, visualizing `f_r(x) = g_r(tanh(x))` on `[-sqrt(5), sqrt(5)]` for `r in {1, 2, 4, 8}`.
+- Generated the preview figure and metadata under `examples/plm/figs/1.7/` so the transformed shape can be inspected before turning it into a new simulation setting.
