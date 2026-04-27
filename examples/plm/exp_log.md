@@ -3381,3 +3381,135 @@ Main observations:
 Generated figure:
 
 - `examples/plm/figs/1.7/1.7.6_minimax_ablation_paths.png`
+
+## 1.7.7
+
+Experiment `1.7.7`, stored across the simulation artifacts `1.7_7`, `1.7_7_tracking`, and `1.7_7_minimax`.
+
+### Goal
+
+This experiment revisits the same projected tanh-wrapped design as `1.7.5`, but increases the Monte Carlo budget from `10` to `30` trials. The goal is to stabilize the comparison across the learned estimators and to bundle the full three-part diagnostic package in one place:
+
+- the final estimator comparison across Oracle AIPW, validation-selected DML, standard DML, and minimax debias;
+- the DML nuisance-learning curve over epochs; and
+- the minimax beta-path ablation over epochs.
+
+### Setting and design
+
+Specific data-generating setting:
+
+- DGP class: `PartialLinearModelUniformNoiseDGP`
+- Covariate dimension: `d = 3`
+- Fixed projection:
+  - `w = (1, 1, 1) / sqrt(3)`
+- Tanh-wrapped family:
+  - `mu(x) = f_{0.8}(w^\top x)`
+  - `pi_1(x) = f_1(w^\top x)`
+  - `pi_2(x) = f_2(w^\top x)`
+  - `pi_4(x) = f_4(w^\top x)`
+  - `pi_8(x) = f_8(w^\top x)`
+- Trial-level target coefficient: `beta ~ Unif[-0.5, 0.5]`
+- Treatment noise scale: `sigma_u = sqrt(3)` so that `Var(u) = 1`
+- Outcome noise scale: `sigma_eps = sqrt(3)` so that `Var(eps) = 1`
+- Training sample size: `n = 2048`
+- Test sample size: `n_test = 10000`
+- Number of trials: `30` per treatment-regression candidate
+
+Method design:
+
+- Final estimator comparison:
+  - validation-selected Neural DML,
+  - standard Neural DML without model selection,
+  - paper minimax-debias estimator,
+  - Oracle AIPW
+- Shared neural-network hyper-parameters:
+  - depth `L = 3`
+  - width `N = 512`
+  - `lambda_mu = lambda_pi = 2e-5`
+  - learning rate `lr = 1e-3`
+  - batch size `2048`
+  - training epochs `200`
+- Validation-selected DML uses:
+  - validation sample size `682 = floor(n / 3)`
+  - model-selection checkpoints every `10` epochs
+- DML nuisance-path diagnostic:
+  - artifact `1.7_7_tracking`
+  - oracle validation sample size `2048`
+  - averaged validation oracle `mu` and `pi` MSE paths on epochs `0, 10, ..., 200`
+- Minimax ablation diagnostic:
+  - artifact `1.7_7_minimax`
+  - oracle validation sample size `2048`
+  - final minimax weights paired with saved `mu` checkpoints on epochs `0, 10, ..., 200`
+
+### Results
+
+Average beta MSE over `30` trials:
+
+| pi family | Oracle AIPW beta MSE | Validation-selected DML beta MSE | Standard DML beta MSE | Minimax debias beta MSE |
+| --- | ---: | ---: | ---: | ---: |
+| `r = 1` | 0.000947 | 0.003054 | 0.017843 | 0.001659 |
+| `r = 2` | 0.000951 | 0.004483 | 0.007039 | 0.001975 |
+| `r = 4` | 0.000954 | 0.005042 | 0.010418 | 0.001619 |
+| `r = 8` | 0.000956 | 0.004522 | 0.009625 | 0.001878 |
+
+Nuisance MSEs for the two Neural DML variants:
+
+| pi family | Selected DML mu MSE | Selected DML pi MSE | Standard DML mu MSE | Standard DML pi MSE |
+| --- | ---: | ---: | ---: | ---: |
+| `r = 1` | 0.111066 | 0.123815 | 0.425869 | 0.364511 |
+| `r = 2` | 0.107035 | 0.225984 | 0.303149 | 0.525602 |
+| `r = 4` | 0.104586 | 0.289962 | 0.448351 | 0.577284 |
+| `r = 8` | 0.100040 | 0.316664 | 0.404835 | 0.541774 |
+
+Bias-variance decomposition of beta estimation error:
+
+| pi family | Selected DML squared bias | Selected DML variance | Standard DML squared bias | Standard DML variance | Minimax squared bias | Minimax variance |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| `r = 1` | 0.001709 | 0.001345 | 0.001018 | 0.016825 | 0.000129 | 0.001530 |
+| `r = 2` | 0.002698 | 0.001785 | 0.000382 | 0.006657 | 0.000547 | 0.001427 |
+| `r = 4` | 0.003794 | 0.001248 | 0.000029 | 0.010389 | 0.000525 | 0.001094 |
+| `r = 8` | 0.003413 | 0.001110 | 0.000118 | 0.009507 | 0.000775 | 0.001103 |
+
+Validation-selection diagnostics for Neural DML:
+
+| pi family | Mean selected mu epoch | Mean selected pi epoch |
+| --- | ---: | ---: |
+| `r = 1` | 35.00 | 37.67 |
+| `r = 2` | 33.67 | 49.33 |
+| `r = 4` | 33.00 | 45.33 |
+| `r = 8` | 36.67 | 45.67 |
+
+DML nuisance-path summary from `1.7_7_tracking`:
+
+| pi family | mu MSE at epoch 0 | Minimum average mu MSE | Epoch of minimum mu MSE | pi MSE at epoch 0 | Minimum average pi MSE | Epoch of minimum pi MSE |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| `r = 1` | 0.480717 | 0.106982 | 40 | 0.442291 | 0.126558 | 40 |
+| `r = 2` | 0.480717 | 0.105446 | 40 | 0.405122 | 0.223103 | 40 |
+| `r = 4` | 0.480717 | 0.103582 | 40 | 0.396858 | 0.284762 | 40 |
+| `r = 8` | 0.480717 | 0.101989 | 40 | 0.396295 | 0.314266 | 40 |
+
+Minimax ablation summary from `1.7_7_minimax`:
+
+| pi family | Minimum average mu MSE | Epoch of minimum mu MSE | Minimum average beta MSE | Epoch of minimum beta MSE | Beta MSE at epoch 200 |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| `r = 1` | 0.106982 | 40 | 0.001615 | 90 | 0.001659 |
+| `r = 2` | 0.105446 | 40 | 0.001656 | 90 | 0.001975 |
+| `r = 4` | 0.103582 | 40 | 0.001619 | 200 | 0.001619 |
+| `r = 8` | 0.101989 | 40 | 0.001789 | 90 | 0.001878 |
+
+Main observations:
+
+- The 30-trial comparison keeps the same qualitative ordering as the earlier 10-trial run, but with much smoother averages. Oracle remains near `9.5e-4` throughout, minimax stays between about `1.6e-3` and `2.0e-3`, validation-selected DML stays around `3e-3` to `5e-3`, and standard DML is clearly the most variable learned method.
+- Validation-selected DML again dominates nuisance estimation. Its `mu` MSE falls from about `0.111` to `0.100` as `r` increases, while its `pi` MSE worsens from about `0.124` to `0.317`. Standard DML nuisance fits are much worse across the board.
+- The bias-variance table makes the same story clearer: validation-selected DML is mainly bias-driven, while standard DML is mainly variance-driven. The minimax estimator remains the most balanced learned method, with both squared bias and variance near `10^{-3}`.
+- The 30-trial DML nuisance tracker is very stable: both the average `mu` and average `pi` validation paths attain their minima at epoch `40` for all four treatment-regression families.
+- The 30-trial minimax ablation confirms that the minimax beta path typically prefers later checkpoints than the nuisance path. For `r = 1`, `2`, and `8`, the best beta MSE occurs around epoch `90`, while for `r = 4` it keeps improving through epoch `200`.
+
+Generated figures:
+
+- `examples/plm/figs/1.7/1.7.7_pi_complexity_mean_mse_comparison.png`
+- `examples/plm/figs/1.7/1.7.7_pi_complexity_beta_bias_sq.png`
+- `examples/plm/figs/1.7/1.7.7_pi_complexity_beta_variance.png`
+- `examples/plm/figs/1.7/1.7.7_unified_mse_mean_curve.png`
+- `examples/plm/figs/1.7/1.7.7_nuisance_validation_overlay_paths.png`
+- `examples/plm/figs/1.7/1.7.7_minimax_ablation_paths.png`

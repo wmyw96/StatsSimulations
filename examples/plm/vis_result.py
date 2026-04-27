@@ -134,7 +134,7 @@ def main() -> None:
 
     if _has_minimax_tracking_paths(results):
         _plot_minimax_tracking_ablation(
-            display_exp_id=display_exp_id,
+            display_exp_id=_minimax_base_display_id(storage_id=storage_id, display_exp_id=display_exp_id),
             fig_dir=fig_dir,
             evaluator=evaluator,
             results=results,
@@ -383,6 +383,13 @@ def _tracking_base_display_id(*, storage_id: str, display_exp_id: str) -> str:
     """Map diagnostic storage ids back to the experiment display id used in filenames."""
     if storage_id.endswith("_tracking"):
         return storage_id.removesuffix("_tracking").replace("_", ".")
+    return display_exp_id
+
+
+def _minimax_base_display_id(*, storage_id: str, display_exp_id: str) -> str:
+    """Map minimax diagnostic storage ids back to the experiment display id used in filenames."""
+    if storage_id.endswith("_minimax"):
+        return storage_id.removesuffix("_minimax").replace("_", ".")
     return display_exp_id
 
 
@@ -1061,7 +1068,7 @@ def _plot_family_15_pi_complexity(
         title_suffix="variance of beta estimation error",
         filename_stem="pi_complexity_beta_variance",
     )
-    if display_exp_id in {"1.6.12", "1.6.13", "1.6.14", "1.7.1", "1.7.2", "1.7.3", "1.7.4", "1.7.5"}:
+    if display_exp_id in {"1.6.12", "1.6.13", "1.6.14", "1.7.1", "1.7.2", "1.7.3", "1.7.4", "1.7.5", "1.7.7"}:
         _plot_family_1612_unified_mean_curves(
             display_exp_id=display_exp_id,
             fig_dir=fig_dir,

@@ -5069,6 +5069,9 @@ EXPERIMENT_ID_BUILDERS = {
     "1.7_5": build_experiment_1_7_5,
     "1.7_5_tracking": build_experiment_1_7_5_tracking,
     "1.7_6": build_experiment_1_7_6,
+    "1.7_7": build_experiment_1_7_5,
+    "1.7_7_tracking": build_experiment_1_7_5_tracking,
+    "1.7_7_minimax": build_experiment_1_7_6,
 }
 
 

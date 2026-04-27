@@ -43,6 +43,7 @@ class PLMEvaluatorTests(unittest.TestCase):
         self.assertEqual(normalize_exp_id("1.7.5"), ("1.7_5", "1.7.5"))
         self.assertEqual(normalize_exp_id("1.7_5_tracking"), ("1.7_5_tracking", "1.7.5.tracking"))
         self.assertEqual(normalize_exp_id("1.7.6"), ("1.7_6", "1.7.6"))
+        self.assertEqual(normalize_exp_id("1.7.7"), ("1.7_7", "1.7.7"))
 
         evaluator = build_evaluator_from_exp_id(
             exp_id="1.1.2",
@@ -1186,6 +1187,40 @@ class PLMEvaluatorTests(unittest.TestCase):
         self.assertEqual(minimax_tracking_config["validation_n"], 2048)
         self.assertEqual(minimax_tracking_config["tracking_interval"], 10)
         self.assertEqual(minimax_tracking_config["batch_size"], 2048)
+
+        evaluator_17_7 = build_evaluator_from_exp_id(
+            exp_id="1.7.7",
+            n_trials=1,
+            seed_offset=0,
+            device="cpu",
+        )
+        self.assertEqual(evaluator_17_7.exp_id, "1.7_7")
+        self.assertEqual(evaluator_17_7.result_path.name, "1.7_7.json")
+        self.assertEqual(evaluator_17_7.dgp_param_grid["func_mu_name"], "experiment_1_7_5_mu")
+        self.assertEqual(
+            [spec["name"] for spec in evaluator_17_7.estimators],
+            ["dml_nn_valid_select", "dml_nn", "plm_minimax_debias", "oracle_aipw"],
+        )
+
+        evaluator_17_7_tracking = build_evaluator_from_exp_id(
+            exp_id="1.7_7_tracking",
+            n_trials=1,
+            seed_offset=0,
+            device="cpu",
+        )
+        self.assertEqual(evaluator_17_7_tracking.exp_id, "1.7_7_tracking")
+        self.assertEqual(evaluator_17_7_tracking.result_path.name, "1.7_7_tracking.json")
+        self.assertEqual(evaluator_17_7_tracking.estimators[0]["name"], "dml_nn_tracking_1_7_5")
+
+        evaluator_17_7_minimax = build_evaluator_from_exp_id(
+            exp_id="1.7_7_minimax",
+            n_trials=1,
+            seed_offset=0,
+            device="cpu",
+        )
+        self.assertEqual(evaluator_17_7_minimax.exp_id, "1.7_7_minimax")
+        self.assertEqual(evaluator_17_7_minimax.result_path.name, "1.7_7_minimax.json")
+        self.assertEqual(evaluator_17_7_minimax.estimators[0]["name"], "plm_minimax_debias_tracking")
 
     def test_run_and_resume_without_duplicate_trials(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
