@@ -472,6 +472,73 @@ class PLMEstimatorTests(unittest.TestCase):
         self.assertTrue(np.all(np.isfinite(result.diagnostics["mu_mse_path"])))
         self.assertTrue(np.all(np.isfinite(result.diagnostics["beta_path"])))
         self.assertTrue(np.all(np.isfinite(result.diagnostics["debias_weights"])))
+        self.assertAlmostEqual(result.diagnostics["beta_path"][-1], result.estimate, places=6)
+
+    def test_minimax_tracking_mu_path_matches_dml_tracking_mu_path(self) -> None:
+        dgp = PartialLinearModelUniformNoiseDGP(
+            beta=0.5,
+            func_mu=zero_mu,
+            func_pi=linear_pi,
+            d=2,
+            sigma_u=0.2,
+            sigma_eps=0.1,
+        )
+        train_sample = dgp.sample(n=12, seed=717, oracle=True)
+        validation_sample = dgp.sample(n=8, seed=818, oracle=True)
+        augmented_oracle = dict(train_sample.oracle)
+        augmented_oracle.update(
+            {
+                "validation_x": validation_sample.observed["x"],
+                "validation_mu_x": validation_sample.oracle["mu_x"],
+                "validation_pi_x": validation_sample.oracle["pi_x"],
+            }
+        )
+        tracking_sample = SampledData(
+            observed=train_sample.observed,
+            oracle=augmented_oracle,
+        )
+        common_hyper_parameters = {
+            "L": 1,
+            "N": 4,
+            "lambda_mu": 1e-4,
+            "lambda_pi": 1e-4,
+            "niter": 3,
+            "lr": 1e-3,
+            "batch_size": 4,
+            "seed": 29,
+        }
+        dml_estimator = PLMDMLOracleTrackingEstimator(
+            name="dml-tracking",
+            hyper_parameters=dict(common_hyper_parameters),
+            d=2,
+            device="cpu",
+        )
+        minimax_estimator = PLMMinimaxDebiasTrackingEstimator(
+            name="minimax-tracking-match",
+            hyper_parameters={
+                **common_hyper_parameters,
+                "lambda_debias": 0.1,
+                "weight_bound": 2.0,
+                "niter_debias": 2,
+                "niter_adversary": 1,
+                "debias_lr": 5e-3,
+                "tracking_interval": 1,
+                "tracking_source": "validation",
+            },
+            d=2,
+            device="cpu",
+        )
+
+        dml_result = dml_estimator.fit(tracking_sample)
+        minimax_result = minimax_estimator.fit(tracking_sample)
+
+        self.assertEqual(minimax_result.diagnostics["epoch_grid"], [0, 1, 2, 3])
+        self.assertTrue(
+            np.allclose(
+                dml_result.diagnostics["tracking_paths"]["validation"]["mu_mse_path"],
+                minimax_result.diagnostics["mu_mse_path"],
+            )
+        )
 
 
 if __name__ == "__main__":

@@ -660,6 +660,7 @@ class PLMMinimaxDebiasEstimator(PLMDMLEstimator):
         beta_path: list[float] = []
         debias_weights_list: list[float] | None = None
         tracking_state: dict[str, Any] | None = None
+        mu_d1_snapshots: list[np.ndarray] = []
 
         lambda_debias = (
             float(self.lambda_debias)
@@ -670,8 +671,9 @@ class PLMMinimaxDebiasEstimator(PLMDMLEstimator):
         debias_diagnostics: dict[str, Any] = {}
 
         def record_checkpoint(epoch: int) -> None:
-            if tracking_state is None or a_hat is None:
-                raise RuntimeError("Tracking checkpoint requested before tracking state or debias weights were created.")
+            if tracking_state is None:
+                raise RuntimeError("Tracking checkpoint requested before tracking state was created.")
+            mu_was_training = self.est_mu.training
             self.est_mu.eval()
             with torch.no_grad():
                 tracked_mu_mse = _compute_oracle_mu_tracking_mse(
@@ -680,10 +682,11 @@ class PLMMinimaxDebiasEstimator(PLMDMLEstimator):
                     tracking_mu=tracking_state["mu"],
                 )
                 current_mu_d1 = self.est_mu(d1_x_tensor).detach().cpu().numpy()
-            beta_checkpoint = float(np.mean((d1_y - current_mu_d1) * a_hat))
+            if mu_was_training:
+                self.est_mu.train()
             epoch_grid.append(int(epoch))
             mu_mse_path.append(tracked_mu_mse)
-            beta_path.append(beta_checkpoint)
+            mu_d1_snapshots.append(np.array(current_mu_d1, copy=True))
 
         if record_epoch_paths:
             tracking_state = _build_oracle_mu_tracking_state(
@@ -692,23 +695,6 @@ class PLMMinimaxDebiasEstimator(PLMDMLEstimator):
                 device=self.device,
                 tracking_source=self.tracking_source,
             )
-            a_hat, debias_diagnostics = _fit_minimax_debiasing_weights(
-                x=d1_x,
-                t=d1_t,
-                est_mu=self.est_mu,
-                d=self.d,
-                depth=self.L,
-                width=self.N,
-                device=self.device,
-                weight_bound=self.weight_bound,
-                lambda_debias=lambda_debias,
-                niter_debias=self.niter_debias,
-                niter_adversary=self.niter_adversary,
-                debias_lr=self.debias_lr,
-                smooth_eps=self.smooth_eps,
-                seed=self.seed,
-            )
-            debias_weights_list = a_hat.reshape(-1).astype(float).tolist()
             record_checkpoint(0)
 
         self.est_mu.train()
@@ -772,6 +758,12 @@ class PLMMinimaxDebiasEstimator(PLMDMLEstimator):
                 smooth_eps=self.smooth_eps,
                 seed=self.seed,
             )
+        if record_epoch_paths:
+            debias_weights_list = a_hat.reshape(-1).astype(float).tolist()
+            beta_path = [
+                float(np.mean((d1_y - mu_snapshot) * a_hat))
+                for mu_snapshot in mu_d1_snapshots
+            ]
 
         beta_hat = float(np.mean((d1_y - mu_hat) * a_hat))
         diagnostics = {

@@ -3358,7 +3358,7 @@ Method design:
 - Mini-batch size: `batch_size = 2048`
 - Training epochs: `niter = 200`
 - Tracking grid: epochs `0, 10, 20, ..., 200`
-- Debiasing-weight construction: the empirical weights `a_i` are solved once on the `D1` split for each trial and then held fixed while the `D2` outcome network continues training. The saved beta path is therefore the minimax beta estimate induced by the current `mu` iterate and the fixed trial-specific empirical weights.
+- Debiasing-weight construction: the empirical weights `a_i` are solved once on the `D1` split after the full minimax fit is complete, using the final trained nuisance network. Those fixed final-trial weights are then paired with the saved `mu` checkpoints from epochs `0, 10, ..., 200`, so the last point on the beta path exactly matches the standard minimax estimate reported in `1.7.5`.
 
 ### Results
 
@@ -3366,17 +3366,17 @@ Average path summaries over `10` trials:
 
 | pi family | mu MSE at epoch 0 | Minimum average mu MSE | Epoch of minimum mu MSE | Minimum average beta MSE | Epoch of minimum beta MSE | Beta MSE at epoch 200 |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| `r = 1` | 0.469836 | 0.118283 | 130 | 0.001830 | 90 | 0.002675 |
-| `r = 2` | 0.469836 | 0.140610 | 20 | 0.001574 | 110 | 0.002093 |
-| `r = 4` | 0.469836 | 0.138497 | 20 | 0.001749 | 110 | 0.002489 |
-| `r = 8` | 0.469836 | 0.138043 | 20 | 0.001764 | 110 | 0.002616 |
+| `r = 1` | 0.469836 | 0.106094 | 40 | 0.001379 | 100 | 0.001937 |
+| `r = 2` | 0.469836 | 0.105040 | 30 | 0.001119 | 190 | 0.001959 |
+| `r = 4` | 0.469836 | 0.102529 | 30 | 0.001137 | 120 | 0.001404 |
+| `r = 8` | 0.469836 | 0.101675 | 30 | 0.001607 | 110 | 0.001825 |
 
 Main observations:
 
-- For `r = 2, 4, 8`, the average validation oracle `mu` MSE reaches its minimum very early, around epoch `20`, and then deteriorates steadily, ending above `0.75`, `0.93`, and `1.08` respectively by epoch `200`.
-- The `r = 1` outcome fit is more stable: its average validation oracle `mu` MSE keeps improving until about epoch `130` before turning upward.
-- The minimax beta error does not attain its minimum at the same time as the oracle `mu` MSE. Across all four settings, the average beta MSE continues improving well past the best `mu` checkpoint and reaches its minimum around epoch `90` to `110`.
-- Even after the oracle `mu` MSE begins to worsen, the minimax beta error remains comparatively stable. That suggests the fixed empirical weights are smoothing out part of the nuisance-fitting deterioration, at least under the current hyper-parameters.
+- The validation oracle `mu` MSE path now matches the DML nuisance-tracking diagnostic `1.7.5_tracking` exactly on the shared checkpoint grid, confirming that the minimax ablation uses the same nuisance-learning trajectory as the neural DML fit.
+- The average `mu` path reaches its minimum around epoch `30` to `40` for all four treatment-regression families, with minimum validation oracle MSE between about `0.1017` and `0.1061`.
+- The minimax beta error attains its minimum noticeably later than the oracle `mu` MSE. The best average beta MSE occurs around epoch `100` for `r = 1`, epoch `190` for `r = 2`, epoch `120` for `r = 4`, and epoch `110` for `r = 8`.
+- The final beta MSE at epoch `200` exactly matches the standard minimax results reported in `1.7.5`, which confirms that the tracked beta path is now calibrated to the actual minimax estimator rather than to an earlier buggy weight construction.
 
 Generated figure:
 

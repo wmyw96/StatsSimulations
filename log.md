@@ -485,3 +485,9 @@
 - Added a minimax-tracking PLM experiment `1.7.6` on the same projected tanh-wrapped family as `1.7.5`, with a dedicated estimator that computes the empirical debiasing weights once per trial and then records the validation oracle `mu` MSE path and induced minimax beta-error path every `10` epochs.
 - Extended the PLM evaluator and plotting flow to preserve `beta_path`, `beta_sq_error_path`, `debias_weights`, and the tracking metadata, then added a two-panel visualization for the minimax ablation study.
 - Ran the full `40`-record `1.7.6` sweep, generated the new minimax ablation figure, and updated `examples/plm/exp_log.md` with the checkpoint-level summary of when the `mu` and beta errors attain their minima across the four `r` settings.
+
+## 2026-04-27 12:09:25 EDT
+
+- Fixed two bugs in the `1.7.6` minimax ablation: the tracker was leaving the outcome network in eval mode after checkpoints, and it was building the empirical debiasing weights too early instead of using the final minimax fit.
+- Updated the minimax tracking estimator and unit tests so the tracked nuisance path matches the DML nuisance tracker and the last tracked beta value matches the standard minimax estimate exactly.
+- Archived the buggy `1.7.6` artifact locally, reran the full `40`-record sweep, regenerated the corrected figure, and rewrote the `examples/plm/exp_log.md` summary with the fixed checkpoint statistics.
