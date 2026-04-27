@@ -455,3 +455,9 @@
 - Added PLM experiment `1.7.3`, which keeps the fixed-coefficient family from `1.7.2` but moves the signal to the first coordinate, with `mu(x) = g_1(x_1)`, `pi_r(x) = g_r(x_1)`, and ambient dimension `d = 3`.
 - Implemented the new DGP function registry entries, evaluator builder, evaluator tests, and experiment-log section, then ran the full `40`-record `1.7.3` sweep and regenerated the associated `1.7.3` figures.
 - Extended the `1.7` visualization path so `1.7.3` also produces the unified mean-curve figure alongside the pi-complexity MSE, bias, and variance summaries.
+
+
+## 2026-04-26 23:03:36 EDT
+
+- Added PLM experiment `1.7.4`, which keeps the one-coordinate design from `1.7.3` but changes the fixed Fourier family to the alternating-cosine-sign version with `a_k = 1`, `b_k = (-1)^k`, and ambient dimension `d = 2`.
+- Implemented the new DGP function registry entries, evaluator builder, visualization hook, evaluator tests, and experiment-log section, then ran the full `40`-record `1.7.4` sweep and regenerated the associated `1.7.4` figures.

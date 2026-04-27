@@ -3094,3 +3094,102 @@ Generated figures:
 - `examples/plm/figs/1.7/1.7.3_pi_complexity_beta_bias_sq.png`
 - `examples/plm/figs/1.7/1.7.3_pi_complexity_beta_variance.png`
 - `examples/plm/figs/1.7/1.7.3_unified_mse_mean_curve.png`
+
+## 1.7.4
+
+Experiment `1.7.4`, stored in the simulation artifact `1.7_4`.
+
+### Goal
+
+This experiment keeps the direct first-coordinate design from `1.7.3`, but changes the Fourier family to the alternating-cosine-sign version with `a_k = 1` and `b_k = (-1)^k`, while also reducing the ambient dimension to `d = 2`. The goal is to see how this sign-flipped family changes the relative difficulty of nuisance estimation and beta estimation across the same roughness grid `r in {1, 2, 4, 8}`.
+
+### Setting and design
+
+Specific data-generating setting:
+
+- DGP class: `PartialLinearModelUniformNoiseDGP`
+- Covariate dimension: `d = 2`
+- Fixed-coefficient Fourier family:
+  - `\tilde g_r(z) = {sum_{k=1}^{10} k^{-1/r} [sin(pi k z) + (-1)^k cos(pi k z)]} / sqrt(sum_{k=1}^{10} 2 k^{-2/r})`
+- Outcome regression:
+  - `mu(x) = \tilde g_1(x_1)`
+- Treatment regression candidates:
+  - `pi_1(x) = \tilde g_1(x_1)`
+  - `pi_2(x) = \tilde g_2(x_1)`
+  - `pi_4(x) = \tilde g_4(x_1)`
+  - `pi_8(x) = \tilde g_8(x_1)`
+- Trial-level target coefficient: `beta ~ Unif[-0.5, 0.5]`
+- Treatment noise scale: `sigma_u = sqrt(3)` so that `Var(u) = 1`
+- Outcome noise scale: `sigma_eps = sqrt(3)` so that `Var(eps) = 1`
+- Training sample size: `n = 2048`
+- Test sample size: `n_test = 10000`
+- Number of trials: `10` per treatment-regression candidate
+
+Method design:
+
+- Compared methods: validation-selected Neural DML, standard Neural DML without model selection, paper minimax-debias estimator, and Oracle AIPW
+- Neural network depth: `L = 3`
+- Neural network width: `N = 512`
+- Outcome-network regularization: `lambda_mu = 2e-5`
+- Treatment-network regularization: `lambda_pi = 2e-5`
+- Validation sample size for validation-selected Neural DML: `validation_n = floor(n / 3) = 682`
+- Validation-selection interval for validation-selected Neural DML: every `10` epochs, including epoch `200`
+- Paper debiasing penalty: `lambda_debias = 1 / (sqrt(n) * log_2(n))` by default on the `D1` split
+- Optimizer: Adam with profiled closed-form updates for the joint least-squares beta on `D2`
+- Learning rate: `lr = 1e-3`
+- Mini-batch size: `batch_size = 2048`
+- Training epochs: `niter = 200`
+- Device: CPU by default unless explicitly changed in the simulation configuration
+
+### Results
+
+Average metrics over `10` trials for each treatment-regression candidate:
+
+| pi family | Oracle AIPW beta MSE | Validation-selected DML beta MSE | Standard DML beta MSE | Minimax debias beta MSE |
+| --- | ---: | ---: | ---: | ---: |
+| `r = 1` | 0.000751 | 0.002211 | 0.001344 | 0.000688 |
+| `r = 2` | 0.000756 | 0.003061 | 0.003264 | 0.001316 |
+| `r = 4` | 0.000759 | 0.002536 | 0.005392 | 0.001461 |
+| `r = 8` | 0.000761 | 0.002369 | 0.007442 | 0.001468 |
+
+Nuisance MSEs for the two Neural DML variants:
+
+| pi family | Selected DML mu MSE | Selected DML pi MSE | Standard DML mu MSE | Standard DML pi MSE |
+| --- | ---: | ---: | ---: | ---: |
+| `r = 1` | 0.093212 | 0.078679 | 0.182783 | 0.197051 |
+| `r = 2` | 0.097175 | 0.159047 | 0.194267 | 0.270246 |
+| `r = 4` | 0.097376 | 0.201071 | 0.196013 | 0.360094 |
+| `r = 8` | 0.094856 | 0.217752 | 0.234919 | 0.432585 |
+
+Bias-variance decomposition of beta estimation error over `10` trials:
+
+| pi family | Selected DML squared bias | Selected DML variance | Standard DML squared bias | Standard DML variance | Minimax squared bias | Minimax variance |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| `r = 1` | 0.001155 | 0.001057 | 0.000091 | 0.001253 | 0.000144 | 0.000543 |
+| `r = 2` | 0.001332 | 0.001729 | 0.000000 | 0.003264 | 0.000635 | 0.000681 |
+| `r = 4` | 0.001053 | 0.001483 | 0.000308 | 0.005084 | 0.000775 | 0.000686 |
+| `r = 8` | 0.001232 | 0.001136 | 0.001378 | 0.006063 | 0.000794 | 0.000674 |
+
+Validation-selection diagnostics for Neural DML:
+
+| pi family | Validation n | Checkpoint grid | Mean selected mu epoch | Mean selected pi epoch |
+| --- | ---: | --- | ---: | ---: |
+| `r = 1` | 682 | `10, 20, ..., 200` | 62.0 | 64.0 |
+| `r = 2` | 682 | `10, 20, ..., 200` | 67.0 | 117.0 |
+| `r = 4` | 682 | `10, 20, ..., 200` | 64.0 | 144.0 |
+| `r = 8` | 682 | `10, 20, ..., 200` | 65.0 | 168.0 |
+
+Main observations:
+
+- This alternating-cosine-sign `d = 2` family is the easiest of the recent `1.7` variants. All learned estimators improve substantially relative to `1.7.3`, and oracle AIPW remains below `8e-4` throughout.
+- The minimax-debias estimator performs best among the learned methods in every `r` setting. Its main advantage here is variance control: its variance stays around `5e-4` to `7e-4`, far below the standard DML variance at larger `r`.
+- Validation-selected DML continues to dominate nuisance estimation, with `mu` MSE near `0.095` and `pi` MSE increasing gradually from `0.079` to `0.218` as `r` grows. However, its beta error remains mostly bias-driven, so it does not beat minimax on beta MSE.
+- Standard DML becomes increasingly unstable as `r` grows: both `pi` MSE and beta variance rise sharply, and the beta MSE climbs from `0.0013` at `r = 1` to `0.0074` at `r = 8`.
+- The selected validation epoch for `pi` shifts markedly later as `r` increases, reaching an average of `168` epochs at `r = 8`. This is consistent with the rougher treatment regressions taking longer to fit well even in this lower-dimensional setting.
+
+Generated figures:
+
+- `examples/plm/figs/1.7/1.7.4_pi_complexity_mean_mse_comparison.png`
+- `examples/plm/figs/1.7/1.7.4_pi_complexity_beta_bias_sq.png`
+- `examples/plm/figs/1.7/1.7.4_pi_complexity_beta_variance.png`
+- `examples/plm/figs/1.7/1.7.4_unified_mse_mean_curve.png`

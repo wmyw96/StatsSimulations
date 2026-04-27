@@ -921,6 +921,62 @@ def experiment_1_7_3_pi_8(x: np.ndarray) -> np.ndarray:
     return _plm_172_g_r_from_projection(_plm_173_first_coordinate(x), r=8.0)
 
 
+PLM_174_DIMENSION = 2
+
+
+def _plm_174_first_coordinate(x: np.ndarray) -> np.ndarray:
+    """Return the first coordinate used in experiment 1.7.4."""
+    x_array = np.asarray(x, dtype=float)
+    if x_array.ndim != 2 or x_array.shape[1] != PLM_174_DIMENSION:
+        raise ValueError(f"experiment_1_7_4 expects x to have shape (n, {PLM_174_DIMENSION}).")
+    return x_array[:, 0]
+
+
+def _plm_174_g_r_from_coordinate(z: np.ndarray, r: float) -> np.ndarray:
+    """Evaluate the fixed-coefficient Fourier family with b_k = (-1)^k on a coordinate."""
+    if r <= 0:
+        raise ValueError("r must be positive.")
+    z_array = np.asarray(z, dtype=float).reshape(-1)
+    k = np.arange(1, PLM_172_NUM_TERMS + 1, dtype=float)
+    weights = k ** (-1.0 / float(r))
+    a_coeffs = np.ones_like(k)
+    b_coeffs = (-1.0) ** k
+    denominator = float(np.sqrt(np.sum((a_coeffs**2 + b_coeffs**2) * (weights**2))))
+    if denominator <= 0:
+        raise ZeroDivisionError("The experiment_1_7_4 normalization denominator must be positive.")
+    phases = np.pi * np.outer(z_array, k)
+    numerator = (
+        np.sin(phases) * (a_coeffs * weights)[None, :]
+        + np.cos(phases) * (b_coeffs * weights)[None, :]
+    )
+    return np.sum(numerator, axis=1, keepdims=True) / denominator
+
+
+def experiment_1_7_4_mu(x: np.ndarray) -> np.ndarray:
+    """Return mu(x) = g_1(x_1) for PLM experiment 1.7.4 with b_k = (-1)^k."""
+    return _plm_174_g_r_from_coordinate(_plm_174_first_coordinate(x), r=1.0)
+
+
+def experiment_1_7_4_pi_1(x: np.ndarray) -> np.ndarray:
+    """Return pi_1(x) = g_1(x_1) for PLM experiment 1.7.4 with b_k = (-1)^k."""
+    return _plm_174_g_r_from_coordinate(_plm_174_first_coordinate(x), r=1.0)
+
+
+def experiment_1_7_4_pi_2(x: np.ndarray) -> np.ndarray:
+    """Return pi_2(x) = g_2(x_1) for PLM experiment 1.7.4 with b_k = (-1)^k."""
+    return _plm_174_g_r_from_coordinate(_plm_174_first_coordinate(x), r=2.0)
+
+
+def experiment_1_7_4_pi_4(x: np.ndarray) -> np.ndarray:
+    """Return pi_4(x) = g_4(x_1) for PLM experiment 1.7.4 with b_k = (-1)^k."""
+    return _plm_174_g_r_from_coordinate(_plm_174_first_coordinate(x), r=4.0)
+
+
+def experiment_1_7_4_pi_8(x: np.ndarray) -> np.ndarray:
+    """Return pi_8(x) = g_8(x_1) for PLM experiment 1.7.4 with b_k = (-1)^k."""
+    return _plm_174_g_r_from_coordinate(_plm_174_first_coordinate(x), r=8.0)
+
+
 FUNCTION_REGISTRY = {
     "sin_2pi_first_coordinate": sin_2pi_first_coordinate,
     "sin_4pi_first_coordinate": sin_4pi_first_coordinate,
@@ -1035,6 +1091,11 @@ FUNCTION_REGISTRY = {
     "experiment_1_7_3_pi_2": experiment_1_7_3_pi_2,
     "experiment_1_7_3_pi_4": experiment_1_7_3_pi_4,
     "experiment_1_7_3_pi_8": experiment_1_7_3_pi_8,
+    "experiment_1_7_4_mu": experiment_1_7_4_mu,
+    "experiment_1_7_4_pi_1": experiment_1_7_4_pi_1,
+    "experiment_1_7_4_pi_2": experiment_1_7_4_pi_2,
+    "experiment_1_7_4_pi_4": experiment_1_7_4_pi_4,
+    "experiment_1_7_4_pi_8": experiment_1_7_4_pi_8,
 }
 
 FUNCTION_LABELS = {
@@ -1151,6 +1212,11 @@ FUNCTION_LABELS = {
     "experiment_1_7_3_pi_2": r"$g_2(x_1)$",
     "experiment_1_7_3_pi_4": r"$g_4(x_1)$",
     "experiment_1_7_3_pi_8": r"$g_8(x_1)$",
+    "experiment_1_7_4_mu": r"$\tilde g_1(x_1)$",
+    "experiment_1_7_4_pi_1": r"$\tilde g_1(x_1)$",
+    "experiment_1_7_4_pi_2": r"$\tilde g_2(x_1)$",
+    "experiment_1_7_4_pi_4": r"$\tilde g_4(x_1)$",
+    "experiment_1_7_4_pi_8": r"$\tilde g_8(x_1)$",
 }
 
 
@@ -4502,6 +4568,115 @@ def build_experiment_1_7_3(
     )
 
 
+def build_experiment_1_7_4(
+    exp_id: str,
+    n_trials: int,
+    seed_offset: int = 0,
+    device: str = "cpu",
+    result_root: str | Path = DEFAULT_RESULT_ROOT,
+) -> PLMEvaluator:
+    """Build the first-coordinate Fourier family with alternating cosine signs for PLM experiment 1.7.4."""
+    unit_variance_scale = math.sqrt(3.0)
+    dgp_param_grid = {
+        "d": PLM_174_DIMENSION,
+        "func_mu_name": "experiment_1_7_4_mu",
+        "func_pi_name": [
+            "experiment_1_7_4_pi_1",
+            "experiment_1_7_4_pi_2",
+            "experiment_1_7_4_pi_4",
+            "experiment_1_7_4_pi_8",
+        ],
+        "beta_sampler_name": "uniform",
+        "beta_low": -0.5,
+        "beta_high": 0.5,
+        "sigma_u": unit_variance_scale,
+        "sigma_eps": unit_variance_scale,
+        "n_test": 10000,
+        "n": [2048],
+    }
+
+    dml_method_config = {
+        "L": 3,
+        "N": 512,
+        "lambda_mu": 2e-5,
+        "lambda_pi": 2e-5,
+        "niter": 200,
+        "lr": 1e-3,
+        "batch_size": 2048,
+        "validation_check_interval": 10,
+        "device": device,
+        "seed_mode": "trial_seed",
+        "d": PLM_174_DIMENSION,
+    }
+
+    minimax_method_config = {
+        "L": 3,
+        "N": 512,
+        "lambda_mu": 2e-5,
+        "lambda_pi": 2e-5,
+        "niter": 200,
+        "lr": 1e-3,
+        "batch_size": 2048,
+        "device": device,
+        "seed_mode": "trial_seed",
+        "d": PLM_174_DIMENSION,
+        "variance_mode": "constant_one",
+    }
+
+    oracle_method_config = {
+        "func_mu_name": "experiment_1_7_4_mu",
+        "func_pi_name": None,
+        "follows_dgp_pi": True,
+    }
+
+    estimators = [
+        {
+            "name": "dml_nn_valid_select",
+            "is_oracle": False,
+            "factory_name": "make_plm_validation_selected_dml_estimator",
+            "method_config": deepcopy(dml_method_config),
+            "accepts_trial_seed": True,
+            "accepts_validation_data": True,
+            "factory": _make_trial_seeded_valid_select_dml_factory(dml_method_config),
+        },
+        {
+            "name": "dml_nn",
+            "is_oracle": False,
+            "factory_name": "make_plm_dml_estimator",
+            "method_config": deepcopy(dml_method_config),
+            "accepts_trial_seed": True,
+            "factory": _make_trial_seeded_dml_factory(dml_method_config),
+        },
+        {
+            "name": "plm_minimax_debias",
+            "is_oracle": False,
+            "factory_name": "make_plm_minimax_debias_estimator",
+            "method_config": deepcopy(minimax_method_config),
+            "accepts_trial_seed": True,
+            "factory": _make_trial_seeded_minimax_factory(minimax_method_config),
+        },
+        {
+            "name": "oracle_aipw",
+            "is_oracle": True,
+            "factory_name": "make_plm_oracle_estimator",
+            "method_config": deepcopy(oracle_method_config),
+            "accepts_dgp_config": True,
+            "factory": _make_oracle_factory(oracle_method_config),
+        },
+    ]
+
+    return PLMEvaluator(
+        exp_name=EXPERIMENT_NAME,
+        exp_id=exp_id,
+        dgp_generator=plm_uniform_noise_dgp_generator,
+        dgp_param_grid=dgp_param_grid,
+        estimators=estimators,
+        n_trials=n_trials,
+        seed_offset=seed_offset,
+        result_root=result_root,
+    )
+
+
 EXPERIMENT_FAMILY_BUILDERS = {
     "1.1": build_experiment_1_1,
     "1.2": build_experiment_1_2,
@@ -4554,6 +4729,7 @@ EXPERIMENT_ID_BUILDERS = {
     "1.7_1": build_experiment_1_7_1,
     "1.7_2": build_experiment_1_7_2,
     "1.7_3": build_experiment_1_7_3,
+    "1.7_4": build_experiment_1_7_4,
 }
 
 
