@@ -3646,3 +3646,139 @@ Generated figures:
 - `examples/plm/figs/1.7/1.7.8_unified_mse_mean_curve.png`
 - `examples/plm/figs/1.7/1.7.8_nuisance_validation_overlay_paths.png`
 - `examples/plm/figs/1.7/1.7.8_minimax_ablation_paths.png`
+
+## 1.7.9
+
+Experiment `1.7.9`, stored across the simulation artifacts `1.7_9`, `1.7_9_tracking`, and `1.7_9_minimax`.
+
+### Goal
+
+This experiment keeps the same per-split sample-size convention and the same three-part diagnostic bundle as the latest `1.7.7`, but moves to a higher ambient dimension:
+
+- `d = 5`
+- `w = (1, 1, 1, 1, 1) / sqrt(5)`
+- `mu(x) = f_{0.6}(w^\top x)`
+- `pi_r(x) = f_r(w^\top x)`
+
+The goal is to see how the same projected tanh-wrapped family behaves when the signal lives in a one-dimensional projection inside a larger five-dimensional ambient space.
+
+### Setting and design
+
+Specific data-generating setting:
+
+- DGP class: `PartialLinearModelUniformNoiseDGP`
+- Covariate dimension: `d = 5`
+- Fixed projection:
+  - `w = (1, 1, 1, 1, 1) / sqrt(5)`
+- Tanh-wrapped family:
+  - `mu(x) = f_{0.6}(w^\top x)`
+  - `pi_1(x) = f_1(w^\top x)`
+  - `pi_2(x) = f_2(w^\top x)`
+  - `pi_4(x) = f_4(w^\top x)`
+  - `pi_8(x) = f_8(w^\top x)`
+- Trial-level target coefficient: `beta ~ Unif[-0.5, 0.5]`
+- Treatment noise scale: `sigma_u = sqrt(3)` so that `Var(u) = 1`
+- Outcome noise scale: `sigma_eps = sqrt(3)` so that `Var(eps) = 1`
+- Per-split training size: `n = |D1| = |D2| = 2048`
+- Total training sample size: `|D1| + |D2| = 4096`
+- Test sample size: `n_test = 10000`
+- Number of trials: `30` per treatment-regression candidate
+
+Method design:
+
+- Final estimator comparison:
+  - validation-selected Neural DML,
+  - standard Neural DML without model selection,
+  - paper minimax-debias estimator,
+  - Oracle AIPW
+- Shared neural-network hyper-parameters:
+  - depth `L = 3`
+  - width `N = 512`
+  - `lambda_mu = lambda_pi = 2e-5`
+  - learning rate `lr = 1e-3`
+  - batch size `2048`
+  - training epochs `200`
+- Validation-selected DML uses:
+  - validation sample size `682 = floor(2048 / 3)`
+  - model-selection checkpoints every `10` epochs
+- DML nuisance-path diagnostic:
+  - artifact `1.7_9_tracking`
+  - oracle validation sample size `2048`
+  - averaged validation oracle `mu` and `pi` MSE paths
+- Minimax ablation diagnostic:
+  - artifact `1.7_9_minimax`
+  - oracle validation sample size `2048`
+  - final minimax weights paired with saved `mu` checkpoints
+
+### Results
+
+Average beta MSE over `30` trials:
+
+| pi family | Oracle AIPW beta MSE | Validation-selected DML beta MSE | Standard DML beta MSE | Minimax debias beta MSE |
+| --- | ---: | ---: | ---: | ---: |
+| `r = 1` | 0.000482 | 0.002845 | 0.077715 | 0.011287 |
+| `r = 2` | 0.000484 | 0.003454 | 0.005358 | 0.009809 |
+| `r = 4` | 0.000486 | 0.003529 | 0.014243 | 0.008999 |
+| `r = 8` | 0.000487 | 0.003397 | 0.001815 | 0.008234 |
+
+Nuisance MSEs for the two Neural DML variants:
+
+| pi family | Selected DML mu MSE | Selected DML pi MSE | Standard DML mu MSE | Standard DML pi MSE |
+| --- | ---: | ---: | ---: | ---: |
+| `r = 1` | 0.134178 | 0.181275 | 0.485864 | 0.599660 |
+| `r = 2` | 0.125781 | 0.279889 | 0.692036 | 0.705023 |
+| `r = 4` | 0.122330 | 0.332392 | 0.599371 | 0.735954 |
+| `r = 8` | 0.120185 | 0.355789 | 0.589039 | 0.718158 |
+
+Bias-variance decomposition of beta estimation error:
+
+| pi family | Selected DML squared bias | Selected DML variance | Standard DML squared bias | Standard DML variance | Minimax squared bias | Minimax variance |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| `r = 1` | 0.002148 | 0.000697 | 0.003785 | 0.073930 | 0.000306 | 0.010980 |
+| `r = 2` | 0.002905 | 0.000548 | 0.000001 | 0.005357 | 0.000445 | 0.009364 |
+| `r = 4` | 0.003067 | 0.000462 | 0.001431 | 0.012812 | 0.000604 | 0.008395 |
+| `r = 8` | 0.002955 | 0.000441 | 0.000337 | 0.001479 | 0.000414 | 0.007820 |
+
+Validation-selection diagnostics for Neural DML:
+
+| pi family | Mean selected mu epoch | Mean selected pi epoch |
+| --- | ---: | ---: |
+| `r = 1` | 33.00 | 32.00 |
+| `r = 2` | 33.33 | 28.33 |
+| `r = 4` | 32.67 | 24.00 |
+| `r = 8` | 33.33 | 22.00 |
+
+DML nuisance-path summary from `1.7_9_tracking`:
+
+| pi family | mu MSE at epoch 0 | Minimum average mu MSE | Epoch of minimum mu MSE | pi MSE at epoch 0 | Minimum average pi MSE | Epoch of minimum pi MSE |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| `r = 1` | 0.484131 | 0.124884 | 36 | 0.445001 | 0.176743 | 33 |
+| `r = 2` | 0.484131 | 0.117365 | 36 | 0.405007 | 0.281708 | 27 |
+| `r = 4` | 0.484131 | 0.114574 | 36 | 0.394063 | 0.327350 | 17 |
+| `r = 8` | 0.484131 | 0.113522 | 36 | 0.392074 | 0.345370 | 14 |
+
+Minimax ablation summary from `1.7_9_minimax`:
+
+| pi family | Minimum average mu MSE | Epoch of minimum mu MSE | Minimum average beta MSE | Epoch of minimum beta MSE | Beta MSE at epoch 200 |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| `r = 1` | 0.133674 | 40 | 0.011162 | 180 | 0.011287 |
+| `r = 2` | 0.128110 | 40 | 0.009252 | 110 | 0.009809 |
+| `r = 4` | 0.123931 | 30 | 0.008538 | 180 | 0.008999 |
+| `r = 8` | 0.122194 | 30 | 0.007837 | 140 | 0.008234 |
+
+Main observations:
+
+- Moving from the lower-dimensional projected settings to `d = 5` makes nuisance learning substantially harder for every learned method, even though the signal still depends only on `w^\top x`.
+- Validation-selected DML continues to dominate nuisance fitting, but its beta error becomes strongly bias-driven, with squared bias around `2e-3` to `3e-3`.
+- Standard DML becomes highly unstable in the harder regimes, especially at `r = 1`, where its variance jumps to about `7.39e-2`.
+- In this five-dimensional setting the minimax estimator is much less competitive than it was in `1.7.7` and `1.7.8`: its beta MSE stays around `8e-3` to `1.1e-2`, well above validation-selected DML, even though its bias remains relatively small.
+- The DML nuisance tracker shows earlier `pi` minima as `r` grows, while the minimax beta path still prefers much later checkpoints, often around epochs `140` to `180`.
+
+Generated figures:
+
+- `examples/plm/figs/1.7/1.7.9_pi_complexity_mean_mse_comparison.png`
+- `examples/plm/figs/1.7/1.7.9_pi_complexity_beta_bias_sq.png`
+- `examples/plm/figs/1.7/1.7.9_pi_complexity_beta_variance.png`
+- `examples/plm/figs/1.7/1.7.9_unified_mse_mean_curve.png`
+- `examples/plm/figs/1.7/1.7.9_nuisance_validation_overlay_paths.png`
+- `examples/plm/figs/1.7/1.7.9_minimax_ablation_paths.png`

@@ -1078,7 +1078,7 @@ def _plot_family_15_pi_complexity(
         title_suffix="variance of beta estimation error",
         filename_stem="pi_complexity_beta_variance",
     )
-    if display_exp_id in {"1.6.12", "1.6.13", "1.6.14", "1.7.1", "1.7.2", "1.7.3", "1.7.4", "1.7.5", "1.7.7", "1.7.8"}:
+    if display_exp_id in {"1.6.12", "1.6.13", "1.6.14", "1.7.1", "1.7.2", "1.7.3", "1.7.4", "1.7.5", "1.7.7", "1.7.8", "1.7.9"}:
         _plot_family_1612_unified_mean_curves(
             display_exp_id=display_exp_id,
             fig_dir=fig_dir,

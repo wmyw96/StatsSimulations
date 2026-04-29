@@ -980,6 +980,8 @@ def experiment_1_7_4_pi_8(x: np.ndarray) -> np.ndarray:
 
 PLM_175_DIMENSION = 3
 _PLM_175_W = np.full(PLM_175_DIMENSION, 1.0 / math.sqrt(PLM_175_DIMENSION))
+PLM_179_DIMENSION = 5
+_PLM_179_W = np.full(PLM_179_DIMENSION, 1.0 / math.sqrt(PLM_179_DIMENSION))
 
 
 def _plm_175_project_onto_w(x: np.ndarray) -> np.ndarray:
@@ -1003,6 +1005,39 @@ def experiment_1_7_5_mu(x: np.ndarray) -> np.ndarray:
 def experiment_1_7_8_mu(x: np.ndarray) -> np.ndarray:
     """Return mu(x) = f_0.6(w^T x) for PLM experiment 1.7.8."""
     return _plm_175_f_r_from_projection(_plm_175_project_onto_w(x), r=0.6)
+
+
+def _plm_179_project_onto_w(x: np.ndarray) -> np.ndarray:
+    """Project x onto the fixed direction w used in experiment 1.7.9."""
+    x_array = np.asarray(x, dtype=float)
+    if x_array.ndim != 2 or x_array.shape[1] != PLM_179_DIMENSION:
+        raise ValueError(f"experiment_1_7_9 expects x to have shape (n, {PLM_179_DIMENSION}).")
+    return x_array @ _PLM_179_W
+
+
+def experiment_1_7_9_mu(x: np.ndarray) -> np.ndarray:
+    """Return mu(x) = f_0.6(w^T x) for PLM experiment 1.7.9."""
+    return _plm_175_f_r_from_projection(_plm_179_project_onto_w(x), r=0.6)
+
+
+def experiment_1_7_9_pi_1(x: np.ndarray) -> np.ndarray:
+    """Return pi_1(x) = f_1(w^T x) for PLM experiment 1.7.9."""
+    return _plm_175_f_r_from_projection(_plm_179_project_onto_w(x), r=1.0)
+
+
+def experiment_1_7_9_pi_2(x: np.ndarray) -> np.ndarray:
+    """Return pi_2(x) = f_2(w^T x) for PLM experiment 1.7.9."""
+    return _plm_175_f_r_from_projection(_plm_179_project_onto_w(x), r=2.0)
+
+
+def experiment_1_7_9_pi_4(x: np.ndarray) -> np.ndarray:
+    """Return pi_4(x) = f_4(w^T x) for PLM experiment 1.7.9."""
+    return _plm_175_f_r_from_projection(_plm_179_project_onto_w(x), r=4.0)
+
+
+def experiment_1_7_9_pi_8(x: np.ndarray) -> np.ndarray:
+    """Return pi_8(x) = f_8(w^T x) for PLM experiment 1.7.9."""
+    return _plm_175_f_r_from_projection(_plm_179_project_onto_w(x), r=8.0)
 
 
 def experiment_1_7_5_pi_1(x: np.ndarray) -> np.ndarray:
@@ -1146,10 +1181,15 @@ FUNCTION_REGISTRY = {
     "experiment_1_7_4_pi_8": experiment_1_7_4_pi_8,
     "experiment_1_7_5_mu": experiment_1_7_5_mu,
     "experiment_1_7_8_mu": experiment_1_7_8_mu,
+    "experiment_1_7_9_mu": experiment_1_7_9_mu,
     "experiment_1_7_5_pi_1": experiment_1_7_5_pi_1,
     "experiment_1_7_5_pi_2": experiment_1_7_5_pi_2,
     "experiment_1_7_5_pi_4": experiment_1_7_5_pi_4,
     "experiment_1_7_5_pi_8": experiment_1_7_5_pi_8,
+    "experiment_1_7_9_pi_1": experiment_1_7_9_pi_1,
+    "experiment_1_7_9_pi_2": experiment_1_7_9_pi_2,
+    "experiment_1_7_9_pi_4": experiment_1_7_9_pi_4,
+    "experiment_1_7_9_pi_8": experiment_1_7_9_pi_8,
 }
 
 FUNCTION_LABELS = {
@@ -1277,6 +1317,11 @@ FUNCTION_LABELS = {
     "experiment_1_7_5_pi_2": r"$f_2(w^\top x)$",
     "experiment_1_7_5_pi_4": r"$f_4(w^\top x)$",
     "experiment_1_7_5_pi_8": r"$f_8(w^\top x)$",
+    "experiment_1_7_9_mu": r"$f_{0.6}(w^\top x)$",
+    "experiment_1_7_9_pi_1": r"$f_1(w^\top x)$",
+    "experiment_1_7_9_pi_2": r"$f_2(w^\top x)$",
+    "experiment_1_7_9_pi_4": r"$f_4(w^\top x)$",
+    "experiment_1_7_9_pi_8": r"$f_8(w^\top x)$",
 }
 
 
@@ -5261,6 +5306,247 @@ def build_experiment_1_7_8_minimax(
     )
 
 
+def build_experiment_1_7_9(
+    exp_id: str,
+    n_trials: int,
+    seed_offset: int = 0,
+    device: str = "cpu",
+    result_root: str | Path = DEFAULT_RESULT_ROOT,
+) -> PLMEvaluator:
+    """Build the five-dimensional projected tanh-wrapped family for PLM experiment 1.7.9."""
+    unit_variance_scale = math.sqrt(3.0)
+    dgp_param_grid = {
+        "d": PLM_179_DIMENSION,
+        "func_mu_name": "experiment_1_7_9_mu",
+        "func_pi_name": [
+            "experiment_1_7_9_pi_1",
+            "experiment_1_7_9_pi_2",
+            "experiment_1_7_9_pi_4",
+            "experiment_1_7_9_pi_8",
+        ],
+        "beta_sampler_name": "uniform",
+        "beta_low": -0.5,
+        "beta_high": 0.5,
+        "sigma_u": unit_variance_scale,
+        "sigma_eps": unit_variance_scale,
+        "n_test": 10000,
+        "n": [2048],
+    }
+
+    dml_method_config = {
+        "L": 3,
+        "N": 512,
+        "lambda_mu": 2e-5,
+        "lambda_pi": 2e-5,
+        "niter": 200,
+        "lr": 1e-3,
+        "batch_size": 2048,
+        "validation_check_interval": 10,
+        "device": device,
+        "seed_mode": "trial_seed",
+        "d": PLM_179_DIMENSION,
+    }
+
+    minimax_method_config = {
+        "L": 3,
+        "N": 512,
+        "lambda_mu": 2e-5,
+        "lambda_pi": 2e-5,
+        "niter": 200,
+        "lr": 1e-3,
+        "batch_size": 2048,
+        "device": device,
+        "seed_mode": "trial_seed",
+        "d": PLM_179_DIMENSION,
+        "variance_mode": "constant_one",
+    }
+
+    oracle_method_config = {
+        "func_mu_name": "experiment_1_7_9_mu",
+        "func_pi_name": None,
+        "follows_dgp_pi": True,
+    }
+
+    estimators = [
+        {
+            "name": "dml_nn_valid_select",
+            "is_oracle": False,
+            "factory_name": "make_plm_validation_selected_dml_estimator",
+            "method_config": deepcopy(dml_method_config),
+            "accepts_trial_seed": True,
+            "accepts_validation_data": True,
+            "factory": _make_trial_seeded_valid_select_dml_factory(dml_method_config),
+        },
+        {
+            "name": "dml_nn",
+            "is_oracle": False,
+            "factory_name": "make_plm_dml_estimator",
+            "method_config": deepcopy(dml_method_config),
+            "accepts_trial_seed": True,
+            "factory": _make_trial_seeded_dml_factory(dml_method_config),
+        },
+        {
+            "name": "plm_minimax_debias",
+            "is_oracle": False,
+            "factory_name": "make_plm_minimax_debias_estimator",
+            "method_config": deepcopy(minimax_method_config),
+            "accepts_trial_seed": True,
+            "factory": _make_trial_seeded_minimax_factory(minimax_method_config),
+        },
+        {
+            "name": "oracle_aipw",
+            "is_oracle": True,
+            "factory_name": "make_plm_oracle_estimator",
+            "method_config": deepcopy(oracle_method_config),
+            "accepts_dgp_config": True,
+            "factory": _make_oracle_factory(oracle_method_config),
+        },
+    ]
+
+    return PLMEvaluator(
+        exp_name=EXPERIMENT_NAME,
+        exp_id=exp_id,
+        dgp_generator=plm_uniform_noise_dgp_generator,
+        dgp_param_grid=dgp_param_grid,
+        estimators=estimators,
+        n_trials=n_trials,
+        seed_offset=seed_offset,
+        result_root=result_root,
+    )
+
+
+def build_experiment_1_7_9_tracking(
+    exp_id: str,
+    n_trials: int,
+    seed_offset: int = 0,
+    device: str = "cpu",
+    result_root: str | Path = DEFAULT_RESULT_ROOT,
+) -> PLMEvaluator:
+    """Build the validation nuisance tracking diagnostic for 1.7.9."""
+    unit_variance_scale = math.sqrt(3.0)
+    dgp_param_grid = {
+        "d": PLM_179_DIMENSION,
+        "func_mu_name": "experiment_1_7_9_mu",
+        "func_pi_name": [
+            "experiment_1_7_9_pi_1",
+            "experiment_1_7_9_pi_2",
+            "experiment_1_7_9_pi_4",
+            "experiment_1_7_9_pi_8",
+        ],
+        "beta_sampler_name": "uniform",
+        "beta_low": -0.5,
+        "beta_high": 0.5,
+        "sigma_u": unit_variance_scale,
+        "sigma_eps": unit_variance_scale,
+        "n_test": 10000,
+        "n": [2048],
+    }
+
+    tracking_method_config = {
+        "L": 3,
+        "N": 512,
+        "lambda_mu": 2e-5,
+        "lambda_pi": 2e-5,
+        "tracking_source": "validation",
+        "validation_n": 2048,
+        "niter": 200,
+        "lr": 1e-3,
+        "batch_size": 2048,
+        "device": device,
+        "seed_mode": "trial_seed",
+        "d": PLM_179_DIMENSION,
+    }
+
+    estimators = [
+        {
+            "name": "dml_nn_tracking_1_7_9",
+            "is_oracle": True,
+            "factory_name": "make_plm_dml_tracking_estimator",
+            "method_config": deepcopy(tracking_method_config),
+            "accepts_trial_seed": True,
+            "factory": _make_trial_seeded_tracking_factory(tracking_method_config),
+        },
+    ]
+
+    return PLMEvaluator(
+        exp_name=EXPERIMENT_NAME,
+        exp_id=exp_id,
+        dgp_generator=plm_uniform_noise_dgp_generator,
+        dgp_param_grid=dgp_param_grid,
+        estimators=estimators,
+        n_trials=n_trials,
+        seed_offset=seed_offset,
+        result_root=result_root,
+    )
+
+
+def build_experiment_1_7_9_minimax(
+    exp_id: str,
+    n_trials: int,
+    seed_offset: int = 0,
+    device: str = "cpu",
+    result_root: str | Path = DEFAULT_RESULT_ROOT,
+) -> PLMEvaluator:
+    """Build the minimax ablation diagnostic for the 1.7.9 family."""
+    unit_variance_scale = math.sqrt(3.0)
+    dgp_param_grid = {
+        "d": PLM_179_DIMENSION,
+        "func_mu_name": "experiment_1_7_9_mu",
+        "func_pi_name": [
+            "experiment_1_7_9_pi_1",
+            "experiment_1_7_9_pi_2",
+            "experiment_1_7_9_pi_4",
+            "experiment_1_7_9_pi_8",
+        ],
+        "beta_sampler_name": "uniform",
+        "beta_low": -0.5,
+        "beta_high": 0.5,
+        "sigma_u": unit_variance_scale,
+        "sigma_eps": unit_variance_scale,
+        "n_test": 10000,
+        "n": [2048],
+    }
+
+    minimax_tracking_method_config = {
+        "L": 3,
+        "N": 512,
+        "lambda_mu": 2e-5,
+        "lambda_pi": 2e-5,
+        "tracking_source": "validation",
+        "tracking_interval": 10,
+        "validation_n": 2048,
+        "niter": 200,
+        "lr": 1e-3,
+        "batch_size": 2048,
+        "device": device,
+        "seed_mode": "trial_seed",
+        "d": PLM_179_DIMENSION,
+        "variance_mode": "constant_one",
+    }
+
+    estimators = [
+        {
+            "name": "plm_minimax_debias_tracking",
+            "is_oracle": True,
+            "factory_name": "make_plm_minimax_tracking_estimator",
+            "method_config": deepcopy(minimax_tracking_method_config),
+            "accepts_trial_seed": True,
+            "factory": _make_trial_seeded_minimax_tracking_factory(minimax_tracking_method_config),
+        },
+    ]
+
+    return PLMEvaluator(
+        exp_name=EXPERIMENT_NAME,
+        exp_id=exp_id,
+        dgp_generator=plm_uniform_noise_dgp_generator,
+        dgp_param_grid=dgp_param_grid,
+        estimators=estimators,
+        n_trials=n_trials,
+        seed_offset=seed_offset,
+        result_root=result_root,
+    )
+
+
 EXPERIMENT_FAMILY_BUILDERS = {
     "1.1": build_experiment_1_1,
     "1.2": build_experiment_1_2,
@@ -5323,6 +5609,9 @@ EXPERIMENT_ID_BUILDERS = {
     "1.7_8": build_experiment_1_7_8,
     "1.7_8_tracking": build_experiment_1_7_8_tracking,
     "1.7_8_minimax": build_experiment_1_7_8_minimax,
+    "1.7_9": build_experiment_1_7_9,
+    "1.7_9_tracking": build_experiment_1_7_9_tracking,
+    "1.7_9_minimax": build_experiment_1_7_9_minimax,
 }
 
 

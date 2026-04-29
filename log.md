@@ -515,3 +515,9 @@
 - Reran the full `1.7.7` PLM bundle under the new convention `n = |D1| = |D2| = 2048`, so the total training sample size is now `4096` while the network batch size remains `2048`.
 - Archived the old total-size `1.7.7` result artifacts locally, regenerated `1.7_7`, `1.7_7_tracking`, and `1.7_7_minimax` with `train_size_semantics = per_split`, and refreshed the entire `examples/plm/figs/1.7/1.7.7_*` figure set.
 - Rewrote the `1.7.7` section of `examples/plm/exp_log.md` so the tables and observations now correspond to the larger-sample per-split run instead of the earlier `n = |D1| + |D2| = 2048` version.
+
+## 2026-04-29 15:11:56 EDT
+
+- Added the `1.7.9` PLM experiment bundle as the `1.7.7` projected tanh-wrapped design lifted to ambient dimension `d = 5`, with `mu(x) = f_{0.6}(w^T x)`, `pi_r(x) = f_r(w^T x)`, fixed equal-weight unit vector `w = (1,1,1,1,1)/sqrt(5)`, per-split training size `n = 2048`, and `30` trials per family.
+- Implemented dedicated function-registry entries, evaluator builders, visualization routing, and regression tests for `1.7_9`, `1.7_9_tracking`, and `1.7_9_minimax`, then ran the full estimator-comparison, DML nuisance-tracking, and minimax beta-path sweeps under `train_size_semantics = per_split`.
+- Generated the full `1.7.9` figure suite under `examples/plm/figs/1.7/` and added the experiment report section to `examples/plm/exp_log.md` with the learned-estimator comparison, nuisance-path minima, and minimax checkpoint summary.
