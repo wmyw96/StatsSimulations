@@ -527,3 +527,9 @@
 - Added the `1.7.10` PLM bundle as the original `1.7.5` projected tanh-wrapped alternating-sign family rerun under the new per-split language with `n = |D1| = |D2| = 1024` and `30` trials per treatment-regression candidate.
 - Implemented dedicated builders, visualization routing, and evaluator coverage for `1.7_10`, `1.7_10_tracking`, and `1.7_10_minimax`, then ran the main estimator comparison together with the DML nuisance tracker and the minimax beta-path ablation.
 - Generated the `1.7.10` figure suite and added the full experiment section to `examples/plm/exp_log.md`, including the learned-estimator comparison, validation-selection summary, nuisance-path minima, and minimax checkpoint table.
+
+## 2026-04-29 19:58:53 EDT
+
+- Added a second `1.7.10` comparison figure that isolates validation-selected DML and minimax in a side-by-side bar chart with the same treatment-regression x-axis and the y-axis labeled as average squared beta error.
+- Regenerated the `1.7.10` visualization set so the new PDF file `examples/plm/figs/1.7/1.7.10_valid_select_vs_minimax_beta_mse_hist.pdf` is saved alongside the existing main figures.
+- Updated the `1.7.10` generated-figures list in `examples/plm/exp_log.md` to record the new PDF artifact.

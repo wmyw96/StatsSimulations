@@ -1086,6 +1086,12 @@ def _plot_family_15_pi_complexity(
             fixed_dgp_config=fixed_dgp_config,
             pi_specs=pi_specs,
         )
+    if display_exp_id == "1.7.10":
+        _plot_valid_select_vs_minimax_beta_mse_histogram(
+            display_exp_id=display_exp_id,
+            fig_dir=fig_dir,
+            decompositions=decompositions,
+        )
 
 
 def _plot_family_1612_unified_mean_curves(
@@ -1415,6 +1421,47 @@ def _plot_family_169_mse_and_grouped_bias_variance(
     fig.savefig(bias_variance_path, dpi=220)
     plt.close(fig)
     print(f"Saved {bias_variance_path}")
+
+
+def _plot_valid_select_vs_minimax_beta_mse_histogram(
+    *,
+    display_exp_id: str,
+    fig_dir: Path,
+    decompositions: list[tuple[str, dict[str, dict[str, float | int]]]],
+) -> None:
+    import matplotlib.pyplot as plt
+
+    x_values = np.arange(len(decompositions), dtype=float)
+    bar_width = 0.36
+    method_specs = [
+        (
+            "dml_nn_valid_select",
+            _dml_label("dml_nn_valid_select", "AIPW beta"),
+            DML_BETA_COLORS["dml_nn_valid_select"],
+        ),
+        ("plm_minimax_debias", "Minimax debias beta", COLOR_BANK["mypurple"]),
+    ]
+    offsets = (-bar_width / 2.0, bar_width / 2.0)
+
+    fig, axis = plt.subplots(figsize=(7.4, 4.8))
+    for offset, (method_name, label, color) in zip(offsets, method_specs):
+        values = []
+        for _pi_label, method_decomposition in decompositions:
+            metric_value = method_decomposition.get(method_name, {}).get("beta_hat_mse")
+            values.append(float(metric_value) if metric_value is not None else np.nan)
+        axis.bar(x_values + offset, values, width=bar_width, color=color, label=label)
+
+    axis.set_xticks(x_values)
+    axis.set_xticklabels([label for label, _ in decompositions])
+    axis.set_xlabel(r"Treatment regression $\pi(x)$")
+    axis.set_ylabel(r"Average $|\hat{\theta} - \theta_0|^2$")
+    axis.set_title(f"{display_exp_id}: validation-selected DML vs minimax")
+    axis.legend()
+    fig.tight_layout()
+    output_path = fig_dir / f"{display_exp_id}_valid_select_vs_minimax_beta_mse_hist.pdf"
+    fig.savefig(output_path)
+    plt.close(fig)
+    print(f"Saved {output_path}")
 
 
 if __name__ == "__main__":
