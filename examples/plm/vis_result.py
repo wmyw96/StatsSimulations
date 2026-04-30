@@ -544,77 +544,84 @@ def _plot_minimax_tracking_ablation(
         COLOR_BANK["myyellow"],
         COLOR_BANK["mylightblue"],
     ]
+    style_context = {"font.family": "Times New Roman"} if display_exp_id == "1.7.10" else {}
+    figure_size = (8.0, 4.0) if display_exp_id == "1.7.10" else (11.2, 4.8)
 
-    fig, axes = plt.subplots(1, 2, figsize=(11.2, 4.8), sharex=True)
-    left_axis, right_axis = axes
+    with plt.rc_context(style_context):
+        fig, axes = plt.subplots(1, 2, figsize=figure_size, sharex=True)
+        left_axis, right_axis = axes
 
-    for func_pi_name, color in zip(pi_specs, colors, strict=False):
-        param_config = {
-            **fixed_dgp_config,
-            "func_pi_name": func_pi_name,
-        }
-        config_signature = evaluator._config_signature(param_config)
-        matching_pairs = [
-            (trial, estimator_record)
-            for trial in results["trial_results"]
-            if evaluator._config_signature(trial["dgp_config"]) == config_signature
-            for estimator_record in trial["estimator_results"]
-            if "mu_mse_path" in estimator_record and "beta_path" in estimator_record
-        ]
-        if not matching_pairs:
-            continue
+        for func_pi_name, color in zip(pi_specs, colors, strict=False):
+            param_config = {
+                **fixed_dgp_config,
+                "func_pi_name": func_pi_name,
+            }
+            config_signature = evaluator._config_signature(param_config)
+            matching_pairs = [
+                (trial, estimator_record)
+                for trial in results["trial_results"]
+                if evaluator._config_signature(trial["dgp_config"]) == config_signature
+                for estimator_record in trial["estimator_results"]
+                if "mu_mse_path" in estimator_record and "beta_path" in estimator_record
+            ]
+            if not matching_pairs:
+                continue
 
-        epoch_grid = np.asarray(matching_pairs[0][1]["epoch_grid"], dtype=float)
-        mu_paths = np.asarray(
-            [estimator_record["mu_mse_path"] for _trial, estimator_record in matching_pairs],
-            dtype=float,
-        )
-        beta_sq_error_paths = np.asarray(
-            [
-                estimator_record.get(
-                    "beta_sq_error_path",
-                    [
-                        (float(beta_value) - float(trial["beta_true"])) ** 2
-                        for beta_value in estimator_record["beta_path"]
-                    ],
-                )
-                for trial, estimator_record in matching_pairs
-            ],
-            dtype=float,
-        )
-        r_label = func_pi_name.rsplit("_", maxsplit=1)[-1]
-        curve_label = rf"$r={r_label}$"
-        left_axis.plot(
-            epoch_grid,
-            mu_paths.mean(axis=0),
-            color=color,
-            linewidth=2.4,
-            label=curve_label,
-        )
-        right_axis.plot(
-            epoch_grid,
-            beta_sq_error_paths.mean(axis=0),
-            color=color,
-            linewidth=2.4,
-            label=curve_label,
-        )
+            epoch_grid = np.asarray(matching_pairs[0][1]["epoch_grid"], dtype=float)
+            mu_paths = np.asarray(
+                [estimator_record["mu_mse_path"] for _trial, estimator_record in matching_pairs],
+                dtype=float,
+            )
+            beta_sq_error_paths = np.asarray(
+                [
+                    estimator_record.get(
+                        "beta_sq_error_path",
+                        [
+                            (float(beta_value) - float(trial["beta_true"])) ** 2
+                            for beta_value in estimator_record["beta_path"]
+                        ],
+                    )
+                    for trial, estimator_record in matching_pairs
+                ],
+                dtype=float,
+            )
+            r_label = func_pi_name.rsplit("_", maxsplit=1)[-1]
+            curve_label = rf"$r={r_label}$"
+            left_axis.plot(
+                epoch_grid,
+                mu_paths.mean(axis=0),
+                color=color,
+                linewidth=2.4,
+                label=curve_label,
+            )
+            right_axis.plot(
+                epoch_grid,
+                beta_sq_error_paths.mean(axis=0),
+                color=color,
+                linewidth=2.4,
+                label=curve_label,
+            )
 
-    left_axis.set_yscale("log")
-    right_axis.set_yscale("log")
-    left_axis.set_xlabel("Epoch")
-    right_axis.set_xlabel("Epoch")
-    left_axis.set_ylabel("Average oracle mu MSE")
-    right_axis.set_ylabel("Average beta squared error")
-    left_axis.set_title(f"{display_exp_id}: oracle mu MSE path")
-    right_axis.set_title(f"{display_exp_id}: beta error path")
-    left_axis.grid(alpha=0.18)
-    right_axis.grid(alpha=0.18)
-    right_axis.legend(loc="upper right", frameon=False)
-    fig.tight_layout()
-    output_path = fig_dir / f"{display_exp_id}_minimax_ablation_paths.png"
-    fig.savefig(output_path, dpi=220)
-    plt.close(fig)
-    print(f"Saved {output_path}")
+        left_axis.set_yscale("log")
+        right_axis.set_yscale("log")
+        left_axis.set_xlabel("Epoch")
+        right_axis.set_xlabel("Epoch")
+        left_axis.set_ylabel(r"Average $\|\hat{\mu} - \mu_0\|_2^2$")
+        right_axis.set_ylabel(r"Average $|\hat{\beta} - \beta_0|_2^2$")
+        if display_exp_id != "1.7.10":
+            left_axis.set_title(f"{display_exp_id}: oracle mu MSE path")
+            right_axis.set_title(f"{display_exp_id}: beta error path")
+        left_axis.grid(alpha=0.18)
+        right_axis.grid(alpha=0.18)
+        right_axis.legend(loc="upper right", frameon=False)
+        fig.tight_layout(pad=0.3 if display_exp_id == "1.7.10" else 1.08)
+        output_path = fig_dir / f"{display_exp_id}_minimax_ablation_paths.png"
+        save_kwargs = {"dpi": 220}
+        if display_exp_id == "1.7.10":
+            save_kwargs.update({"bbox_inches": "tight", "pad_inches": 0.02})
+        fig.savefig(output_path, **save_kwargs)
+        plt.close(fig)
+        print(f"Saved {output_path}")
 
 
 def _plot_family_14_nuisance_paths(
