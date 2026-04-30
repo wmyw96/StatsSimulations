@@ -533,3 +533,8 @@
 - Added a second `1.7.10` comparison figure that isolates validation-selected DML and minimax in a side-by-side bar chart with the same treatment-regression x-axis and the y-axis labeled as average squared beta error.
 - Regenerated the `1.7.10` visualization set so the new PDF file `examples/plm/figs/1.7/1.7.10_valid_select_vs_minimax_beta_mse_hist.pdf` is saved alongside the existing main figures.
 - Updated the `1.7.10` generated-figures list in `examples/plm/exp_log.md` to record the new PDF artifact.
+
+## 2026-04-29 20:02:27 EDT
+
+- Restyled the `1.7.10` validation-selected DML versus minimax PDF comparison figure to use a compact `4x4` layout, Times New Roman text, shortened legend labels `DML` and `Ours`, and a tighter PDF export.
+- Regenerated `examples/plm/figs/1.7/1.7.10_valid_select_vs_minimax_beta_mse_hist.pdf` so the saved artifact matches the updated presentation requirements.

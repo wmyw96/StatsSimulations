@@ -1431,37 +1431,34 @@ def _plot_valid_select_vs_minimax_beta_mse_histogram(
 ) -> None:
     import matplotlib.pyplot as plt
 
-    x_values = np.arange(len(decompositions), dtype=float)
-    bar_width = 0.36
-    method_specs = [
-        (
-            "dml_nn_valid_select",
-            _dml_label("dml_nn_valid_select", "AIPW beta"),
-            DML_BETA_COLORS["dml_nn_valid_select"],
-        ),
-        ("plm_minimax_debias", "Minimax debias beta", COLOR_BANK["mypurple"]),
-    ]
-    offsets = (-bar_width / 2.0, bar_width / 2.0)
+    with plt.rc_context({"font.family": "Times New Roman"}):
+        x_values = np.arange(len(decompositions), dtype=float)
+        bar_width = 0.36
+        method_specs = [
+            ("dml_nn_valid_select", "DML", DML_BETA_COLORS["dml_nn_valid_select"]),
+            ("plm_minimax_debias", "Ours", COLOR_BANK["mypurple"]),
+        ]
+        offsets = (-bar_width / 2.0, bar_width / 2.0)
 
-    fig, axis = plt.subplots(figsize=(7.4, 4.8))
-    for offset, (method_name, label, color) in zip(offsets, method_specs):
-        values = []
-        for _pi_label, method_decomposition in decompositions:
-            metric_value = method_decomposition.get(method_name, {}).get("beta_hat_mse")
-            values.append(float(metric_value) if metric_value is not None else np.nan)
-        axis.bar(x_values + offset, values, width=bar_width, color=color, label=label)
+        fig, axis = plt.subplots(figsize=(4.0, 4.0))
+        for offset, (method_name, label, color) in zip(offsets, method_specs):
+            values = []
+            for _pi_label, method_decomposition in decompositions:
+                metric_value = method_decomposition.get(method_name, {}).get("beta_hat_mse")
+                values.append(float(metric_value) if metric_value is not None else np.nan)
+            axis.bar(x_values + offset, values, width=bar_width, color=color, label=label)
 
-    axis.set_xticks(x_values)
-    axis.set_xticklabels([label for label, _ in decompositions])
-    axis.set_xlabel(r"Treatment regression $\pi(x)$")
-    axis.set_ylabel(r"Average $|\hat{\theta} - \theta_0|^2$")
-    axis.set_title(f"{display_exp_id}: validation-selected DML vs minimax")
-    axis.legend()
-    fig.tight_layout()
-    output_path = fig_dir / f"{display_exp_id}_valid_select_vs_minimax_beta_mse_hist.pdf"
-    fig.savefig(output_path)
-    plt.close(fig)
-    print(f"Saved {output_path}")
+        axis.set_xticks(x_values)
+        axis.set_xticklabels([label for label, _ in decompositions], fontsize=10)
+        axis.set_xlabel(r"Treatment regression $\pi(x)$", fontsize=11)
+        axis.set_ylabel(r"Average $|\hat{\theta} - \theta_0|^2$", fontsize=11)
+        axis.tick_params(axis="y", labelsize=10)
+        axis.legend(fontsize=10, frameon=False)
+        fig.tight_layout(pad=0.3)
+        output_path = fig_dir / f"{display_exp_id}_valid_select_vs_minimax_beta_mse_hist.pdf"
+        fig.savefig(output_path, bbox_inches="tight", pad_inches=0.02)
+        plt.close(fig)
+        print(f"Saved {output_path}")
 
 
 if __name__ == "__main__":
